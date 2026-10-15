@@ -1,6 +1,6 @@
 # Multi-Agent IDE
 
-Platform for orchestrating long-running AI agents (Supervisor, Coder, Reviewer) on a local workspace, with Git worktree isolation, Docker sandboxing, human-in-the-loop approval and cost guardrails.
+Domain-agnostic platform for orchestrating long-running AI agent squads (research, data/finance, content, legal, engineering) on a local workspace, with draft isolation, Docker sandboxing, human-in-the-loop approval and cost guardrails. Squads are defined in `templates/*.yaml`.
 
 See `CLAUDE.md` for architecture and engineering rules.
 

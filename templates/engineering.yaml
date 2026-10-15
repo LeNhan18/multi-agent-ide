@@ -1,0 +1,18 @@
+name: engineering-squad
+domain: engineering
+description: Plan, implement and review code changes in an isolated git worktree.
+budget_limit_usd: 5.0
+supervisor:
+  role_name: supervisor
+  system_prompt: Break the user goal into tasks and route each to the right member. Stop when the reviewer approves.
+  model_config: { model: claude-haiku-5-5 }
+members:
+  - role_name: coder
+    system_prompt: Implement the assigned task with minimal, surgical SEARCH/REPLACE edits. Run tests in the sandbox before handing off.
+    allowed_mcp_tools: [list_directory, grep_search, read_file_lines, apply_search_replace_diff, run_in_sandbox]
+    hitl_tools: [delete_file, install_system_package]
+  - role_name: reviewer
+    system_prompt: Review the diff and test output. Approve or return precise, actionable feedback.
+    allowed_mcp_tools: [read_file_lines, grep_search, run_in_sandbox]
+    is_reviewer: true
+    model_config: { model: claude-haiku-5-5 }

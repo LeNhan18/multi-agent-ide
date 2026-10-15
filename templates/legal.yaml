@@ -1,0 +1,21 @@
+name: legal-audit-squad
+domain: legal
+description: Extract clauses from contracts (PDF/DOCX), flag risks and draft a review memo.
+budget_limit_usd: 3.0
+supervisor:
+  role_name: supervisor
+  system_prompt: Assign documents to the extractor, then send findings to the auditor. Finish with a memo draft.
+  model_config: { model: claude-haiku-5-5 }
+members:
+  - role_name: extractor
+    system_prompt: Parse each document with Docling and extract parties, dates, obligations, termination and liability clauses with page references.
+    allowed_mcp_tools: [list_directory, docling_convert, read_file_lines]
+    output_schema:
+      type: object
+      properties:
+        clauses: { type: array, items: { type: object } }
+  - role_name: auditor
+    system_prompt: Compare extracted clauses against the checklist and list risks with severity and citations. Never invent clauses.
+    allowed_mcp_tools: [read_file_lines, apply_search_replace_diff]
+    is_reviewer: true
+    hitl_tools: [overwrite_original_document]

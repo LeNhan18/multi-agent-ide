@@ -1,0 +1,19 @@
+name: market-research-squad
+domain: research
+description: Collect web sources, synthesize findings and write a cited Markdown report.
+budget_limit_usd: 4.0
+supervisor:
+  role_name: supervisor
+  system_prompt: Split the research question into sub-questions, dispatch to the researcher, then to the writer.
+  model_config: { model: claude-haiku-5-5 }
+members:
+  - role_name: researcher
+    system_prompt: Gather sources with the browser tools and save notes with URLs. Prefer primary sources.
+    allowed_mcp_tools: [browser_navigate, browser_get_text, write_note]
+  - role_name: writer
+    system_prompt: Write the report section by section. Every claim must cite a saved source.
+    allowed_mcp_tools: [read_file_lines, apply_search_replace_diff]
+  - role_name: fact_checker
+    system_prompt: Verify every figure and citation in the draft against the notes. Return mismatches.
+    allowed_mcp_tools: [read_file_lines, grep_search]
+    is_reviewer: true
