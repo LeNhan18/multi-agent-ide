@@ -15,4 +15,5 @@ members:
     system_prompt: Review the diff and test output. Approve or return precise, actionable feedback.
     allowed_mcp_tools: [read_file_lines, grep_search, run_in_sandbox]
     is_reviewer: true
-    model_config: { model: claude-haiku-5-5 }
+    reviews: [coder]
+    model_config: { provider: openai, model: gpt-4o-mini }
