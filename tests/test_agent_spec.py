@@ -33,3 +33,18 @@ def test_duplicate_roles_rejected():
                 "members": [member, member],
             }
         )
+
+
+@pytest.mark.parametrize("reviewer", [
+    {"role_name": "reviewer", "system_prompt": "p", "is_reviewer": True, "reviews": ["reviewer"]},
+    {"role_name": "reviewer", "system_prompt": "p", "is_reviewer": True, "reviews": ["worker"]},
+    {"role_name": "reviewer", "system_prompt": "p", "is_reviewer": True, "reviews": [], "model_config": {"provider": "openai"}},
+])
+def test_invalid_review_topologies(reviewer):
+    with pytest.raises(ValidationError):
+        SquadTemplate.model_validate({"name": "s", "domain": "custom", "supervisor": {"role_name": "sup", "system_prompt": "p"}, "members": [{"role_name": "worker", "system_prompt": "p"}, reviewer]})
+
+
+def test_valid_cross_provider_review():
+    squad = SquadTemplate.model_validate({"name": "s", "domain": "custom", "supervisor": {"role_name": "sup", "system_prompt": "p"}, "members": [{"role_name": "worker", "system_prompt": "p", "reports_to": "sup"}, {"role_name": "reviewer", "system_prompt": "p", "is_reviewer": True, "reviews": ["worker"], "model_config": {"provider": "openai"}}]})
+    assert squad.members[1].reviews == ["worker"]
