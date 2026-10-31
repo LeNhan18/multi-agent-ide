@@ -17,3 +17,5 @@ members:
     system_prompt: Verify every figure and citation in the draft against the notes. Return mismatches.
     allowed_mcp_tools: [read_file_lines, grep_search]
     is_reviewer: true
+    reviews: [researcher, writer]
+    model_config: { provider: openai, model: gpt-4o-mini }
