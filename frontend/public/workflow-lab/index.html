@@ -1,0 +1,154 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Office · Bảng triển khai</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f1;color:#172a23;font:15px system-ui,sans-serif}header{background:#102d24;color:#fff}a{color:inherit}button,input,select,textarea{font:inherit}button,select{cursor:pointer}button{border:1px solid #d9e1d8;border-radius:9px;padding:9px 13px;background:white;color:#172a23}button:hover{border-color:#4a866a}button:focus-visible,a:focus-visible{outline:3px solid #76ad83;outline-offset:2px}.wrap{max-width:1240px;margin:auto;padding:24px}.top,.line,.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-weight:800}.mark{background:#cbf379;color:#102d24;border-radius:8px;padding:7px;margin-right:8px}.muted{color:#596b61}.light{color:#bed2c6}.hero{padding:36px 0 22px}.hero h1{font-size:clamp(32px,6vw,65px);letter-spacing:-.055em;margin:9px 0}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.lime{color:#cbf379}.primary{background:#cbf379;border-color:#b4d967;font-weight:750}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.panel,.tile,.task{background:#fff;border:1px solid #dfe5dc;border-radius:13px;padding:17px}.stats{margin-top:0}.stats strong{font-size:27px;display:block}.stats span{color:#596b61}.nav{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0}.nav button[aria-pressed=true]{background:#174132;color:#fff}.tag{display:inline-block;font-size:12px;font-weight:700;background:#e8efe8;border-radius:20px;padding:4px 9px}.warn{background:#fff0cf;color:#7d4a10}.ok{background:#dff0df;color:#234f36}.section{margin:20px 0}.section h2{margin:0}.filters{justify-content:flex-start}.filters select,.filters input{max-width:100%}.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.lane{background:#eaf0e8;border-radius:12px;padding:10px;min-height:125px}.lane h3{margin:4px 3px 10px;font-size:15px}.task{margin:8px 0;padding:12px;overflow-wrap:anywhere}.task h3,.task h4{margin:8px 0}.task p{margin:7px 0}.task .open{font-weight:750;text-align:left;background:transparent;border:0;padding:0;text-decoration:underline;text-underline-offset:3px}.bar{height:8px;background:#e5eee4;border-radius:10px;overflow:hidden;margin:12px 0}.bar span{display:block;height:100%;background:#4d8f67}.timeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.week{text-align:left}.week strong{display:block;margin:6px 0}.week.current{border:2px solid #438660}.week.over{background:#fff0cf}.list{display:grid;gap:10px}.check{display:flex;gap:12px;align-items:start}.check input{margin-top:5px;accent-color:#225f44}.check .body{flex:1}.check .body p{margin:7px 0}.empty{padding:20px;color:#596b61}.foot{padding-bottom:32px;font-size:13px}dialog{border:1px solid #cbd9cd;border-radius:16px;width:min(700px,96vw);max-height:90vh;color:#172a23;padding:22px}dialog::backdrop{background:#102d2499}form{display:grid;grid-template-columns:1fr 1fr;gap:12px}form label{display:grid;gap:4px;font-size:13px;font-weight:700}.full{grid-column:1/-1}input,select,textarea{background:#fff;color:#172a23;border:1px solid #cbd9cd;border-radius:7px;padding:8px;min-width:0}textarea{resize:vertical}#notice:empty{display:none}#notice{padding:9px;background:#fff0cf;border-radius:8px}.danger{color:#9c2e2e}@media(max-width:850px){.board,.timeline{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:550px){.wrap{padding:16px}.grid{grid-template-columns:1fr}.board{grid-template-columns:1fr}.hero{padding:24px 0 10px}.check{flex-wrap:wrap}}
+
+#office{margin:0 0 22px;background:#0d1729;color:#e4edfb;border:1px solid #253650;border-radius:16px;overflow:hidden}
+.office-head,.office-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.office-head{padding:19px 20px;border-bottom:1px solid #253650}.office-head .eyebrow{color:#93a9cb}.office-head h2{margin:4px 0 0;letter-spacing:-.025em}
+#office button,#office select{background:#18263f;color:#e4edfb;border-color:#405371}
+#office-run{background:#b9f38d!important;color:#132523!important;font-weight:750}
+.office-layout{display:grid;grid-template-columns:minmax(0,1fr) 265px}.office-stage{position:relative;background:radial-gradient(ellipse at center,#1c2e4c,#0b1425);min-width:0}
+.office-stage canvas{display:block;width:100%;height:clamp(300px,44vw,480px);touch-action:none;cursor:grab}.office-stage canvas:active{cursor:grabbing}
+.office-hint{position:absolute;bottom:10px;left:10px;right:10px;text-align:center;color:#b9c9e2;font-size:12px;pointer-events:none}
+#office aside{padding:16px;border-left:1px solid #253650}#office aside p{color:#c2d1e7}#office aside label{display:grid;gap:6px;font-size:13px}
+.office-picks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.office-picks button{padding:6px;font-size:13px;border-left:3px solid var(--agent)!important}.office-picks button[aria-pressed=true]{background:var(--agent)!important;color:#152339!important}
+#office-status{margin-bottom:0;padding-top:10px;border-top:1px solid #344461;font-size:13px;min-height:57px}
+@media(max-width:700px){.office-layout{grid-template-columns:1fr}#office aside{border-left:0;border-top:1px solid #253650}.office-picks{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+#workflow{margin:0 0 24px;background:#eaf0f8;border:1px solid #cedaeb;border-radius:16px;padding:16px;color:#172840}
+#workflow header{background:transparent;color:inherit}#workflow header h2{margin:5px 0}#workflow p{line-height:1.55}
+.wf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wf-grid section{padding:14px;background:#fff;border:1px solid #d6e0ed;border-radius:10px;min-width:0}
+.wf-grid h3{margin:0 0 8px}.wf-bottom{grid-template-columns:1fr 1fr;margin-top:10px}
+.wf-channels,#wf-journal{display:grid;gap:5px}.wf-channels div{padding:6px;background:#edf3fa;border-radius:5px;font-size:13px}
+#wf-journal{max-height:285px;overflow:auto}#wf-journal button{text-align:left;overflow-wrap:anywhere}
+#wf-state{color:#225f44;overflow-wrap:anywhere}#wf-envelope{overflow:auto;background:#14223b;color:#eaf2ff;padding:12px;border-radius:8px}
+@media(max-width:750px){.wf-grid{grid-template-columns:1fr}}
+</style>
+<header><div class="wrap"><div class="top"><div class="brand"><span class="mark">AO</span> AI Office <span class="light">/ Bảng triển khai</span></div><a class="light" href="https://github.com/LeNhan18/multi-agent-ide" target="_blank" rel="noopener">LeNhan18/multi-agent-ide ↗</a></div><div class="hero"><div class="eyebrow lime">02/11 – 27/12/2026 · Kế hoạch 8 tuần</div><h1>Điều hành AI Office</h1><div class="line"><span class="light">Lập kế hoạch theo phiên và ghi bằng chứng cho từng mốc.</span><button class="primary" id="new">＋ Thêm công việc</button></div></div></div></header>
+<main class="wrap"><section id="office" aria-label="Văn phòng agent 3D"></section><section id="workflow" aria-label="Workflow Lab"></section><div class="grid stats" id="stats"></div><nav class="nav" id="nav" aria-label="Chế độ xem"></nav><div class="line filters" id="filters"><select id="week" aria-label="Tuần"></select><select id="milestone" aria-label="Mốc"></select><label><input type="checkbox" id="missing"> Chỉ hiện việc thiếu bằng chứng</label><button id="clear">Bỏ lọc</button></div><p id="notice" role="status"></p><section id="view" class="section"></section><div class="line foot muted"><span>Cập nhật thủ công · Dữ liệu lưu trong trình duyệt này.</span><div class="actions"><button id="export">Xuất JSON</button><button id="import">Nhập JSON</button><input type="file" accept=".json,application/json" hidden id="file"></div></div></main>
+<dialog id="editor"><div class="line"><h2 id="editTitle">Công việc</h2><button id="close" aria-label="Đóng">✕</button></div><form id="form">
+<label class="full">Tên công việc<input name="title" required maxlength="160"></label>
+<label>Mốc<select name="milestone"></select></label><label>Tuần<select name="week"></select></label>
+<label>Phiên làm việc<input name="session" required placeholder="VD: Phiên 1 · Thứ Hai"></label><label>Thời lượng dự kiến (giờ)<input name="hours" type="number" min="0.25" step="0.25" max="84" required></label>
+<label>Trạng thái<select name="status"></select></label><label>Ưu tiên<select name="priority"><option>Cao</option><option>Vừa</option><option>Thấp</option></select></label>
+<label class="full">Tiêu chí kiểm chứng<textarea name="criteria" rows="2" required></textarea></label><label class="full">Rủi ro<textarea name="risk" rows="2"></textarea></label>
+<label>Loại bằng chứng<select name="evidenceType"><option value="">Chưa chọn</option><option>PR</option><option>Issue</option><option>Test</option><option>Log</option></select></label>
+<label>Link hoặc tham chiếu bằng chứng<input name="evidenceRef" placeholder="URL, lệnh test hoặc đường dẫn log"></label>
+<label class="full">Kết quả quan sát được<textarea name="evidenceNote" rows="2" placeholder="VD: Test pass trên commit abc123"></textarea></label><label class="full">Bước tiếp theo<textarea name="next" rows="2"></textarea></label>
+<div class="full line"><button type="button" id="delete" class="danger">Xóa việc</button><button class="primary" type="submit">Lưu công việc</button></div></form></dialog>
+<script>
+'use strict';
+const M=[
+ {name:'Terminal Office',date:'29/11/2026',goal:'Một squad chạy hết vòng làm → duyệt → merge, khôi phục từ checkpoint và dừng chờ người sau 3 lần reject.'},
+ {name:'Safety & Observability',date:'13/12/2026',goal:'Docker áp giới hạn RAM/CPU, nhật ký append-only và Auditor đọc được log.'},
+ {name:'UI Demo',date:'27/12/2026',goal:'Demo giao diện hiển thị trạng thái phiên chạy, kết quả duyệt và dấu vết kiểm chứng.'}
+];
+const W=['02–08/11','09–15/11','16–22/11','23–29/11','30/11–06/12','07–13/12','14–20/12','21–27/12'];
+const S=['Chờ làm','Đang làm','Bị chặn','Hoàn tất'];
+const plans=[
+[['Rà bộ khung và điểm vào CLI','Xác định lệnh chạy và cấu trúc module trên một commit cụ thể.','Chưa xác nhận bộ khung đã có trên nhánh mặc định.','Mở repo và ghi commit đang dùng.'],['Chốt luồng squad','Mô tả đầu vào, đầu ra và điều kiện chuyển vai trò.','Vai trò duyệt và merge có thể chồng nhau.','Liệt kê các bước chạy mẫu.'],['Chuẩn bị fixture CLI','Có fixture nhỏ chạy lặp lại được và kết quả mong đợi.','Fixture phụ thuộc môi trường.','Chọn một thay đổi đơn giản cho kịch bản.']],
+[['Dựng lệnh điều phối squad','Một lệnh CLI chạy fixture và trả về kết quả có thể kiểm tra.','Lỗi giữa phiên có thể mất dấu trạng thái.','Chốt tham số đầu vào cho CLI.'],['Nối vòng làm → duyệt → merge','Test luồng approve đi đến trạng thái merge.','Merge có thể xảy ra khi chưa có approve.','Tạo fixture có phản hồi approve.'],['Tách các kết quả duyệt','Test approve, reject và lỗi của reviewer cho kết quả riêng.','Lỗi hạ tầng bị tính thành reject.','Viết bảng chuyển trạng thái.']],
+[['Lưu checkpoint','Checkpoint lưu bước hiện tại, số lần reject và định danh phiên.','Lưu dở gây hỏng checkpoint.','Chọn định dạng lưu và mô phỏng lỗi ghi.'],['Khôi phục phiên chạy','Dừng giữa phiên rồi tiếp tục từ checkpoint mà không lặp bước đã xong.','Replay có thể lặp thao tác merge.','Chọn điểm ngắt giữa review và merge.'],['Dừng sau 3 lần reject','Test xác nhận reject thứ 3 chuyển sang chờ người và không thử lần 4.','Đếm sai sau resume.','Kiểm tra đếm reject qua hai lần chạy.']],
+[['Chạy nghiệm thu M1','Có log từ phiên approve đến merge và phiên bị reject 3 lần.','Chỉ chạy đường thành công.','Chạy lại cả hai fixture.'],['Thử resume trên phiên thật','Log trước và sau resume có cùng mã phiên và không lặp thao tác.','Checkpoint cũ không tương thích.','Lưu log của lần chạy bị ngắt.'],['Chốt bằng chứng Terminal Office','Gắn PR hoặc test/log theo commit cho từng tiêu chí M1.','Bằng chứng không khớp phiên bản demo.','Đối chiếu commit và lệnh tái hiện.']],
+[['Cấu hình Docker giới hạn tài nguyên','Xác nhận giới hạn CPU/RAM trên container đang chạy.','Cấu hình khai báo chưa được áp dụng khi chạy.','Ghi thông số giới hạn và lệnh kiểm tra.'],['Thử job vượt giới hạn','Thu được kết quả và log khi job vượt RAM hoặc chạm giới hạn CPU.','Job treo làm chậm phiên chạy.','Chuẩn bị fixture tải CPU và RAM riêng.'],['Ghi nhật ký append-only','Các sự kiện ghi nối tiếp, nội dung cũ giữ nguyên qua lần chạy tiếp theo.','Nhiều worker có thể ghi xen dòng.','Chốt schema sự kiện và mã phiên.']],
+[['Cho Auditor đọc log','Auditor truy xuất được các sự kiện theo mã phiên bằng giao diện đọc.','Auditor có quyền ghi vào log.','Kiểm tra quyền của tài khoản Auditor.'],['Test đường lỗi và log','Log ghi kết quả Docker lỗi và lỗi ghi log được phát hiện.','Thông tin nhạy cảm xuất hiện trong log.','Thử fixture lỗi với dữ liệu giả.'],['Chốt bằng chứng Safety & Observability','Gắn kết quả kiểm tra giới hạn, append-only và quyền Auditor.','Thiếu log tái hiện ca vượt tài nguyên.','Ghi lệnh chạy kèm commit.']],
+[['Dựng màn hình danh sách phiên','UI hiển thị đúng mã phiên, trạng thái và thời điểm từ dữ liệu demo.','Dữ liệu demo khác schema thực.','Đối chiếu với log mẫu M2.'],['Dựng chi tiết phiên và kết quả duyệt','Mở phiên xem được thứ tự sự kiện và kết quả duyệt.','Log thiếu trường làm hỏng màn hình.','Thử phiên có sự kiện thiếu trường tùy chọn.'],['Hiển thị phiên chờ người','UI thể hiện rõ dừng sau 3 lần reject và bước tiếp theo.','Người xem nhầm chờ người với đang chạy.','Dùng fixture reject từ M1.']],
+[['Tích hợp dữ liệu demo end-to-end','Một phiên CLI xuất dữ liệu mà UI đọc và hiển thị được.','Môi trường demo thiếu đường dẫn dữ liệu.','Chạy từ checkout sạch.'],['Diễn tập UI Demo','Kiểm tra luồng thành công, chờ người và lỗi hiển thị.','Demo phụ thuộc dữ liệu cục bộ chưa chuẩn bị.','Chuẩn bị fixture dự phòng.'],['Chốt bằng chứng UI Demo','Gắn test hoặc log kèm commit và các bước tái hiện demo.','Bằng chứng chỉ cho thấy giao diện tĩnh.','Quay lại luồng chạy và đối chiếu dữ liệu.']]
+];
+const key='ai-office-tracker-v1';
+const seed=plans.flatMap((items,i)=>items.map(([title,criteria,risk,next],j)=>({id:'task-'+i+'-'+j,title,milestone:i<4?0:i<6?1:2,week:i,session:'Phiên '+(j+1),hours:[4,4,4][j],status:0,priority:j===2?'Vừa':'Cao',criteria,risk,next,evidenceType:'',evidenceRef:'',evidenceNote:''})));
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const options=(arr,first)=> (first?'<option value="">'+first+'</option>':'')+arr.map((x,i)=>'<option value="'+i+'">'+esc(x)+'</option>').join('');
+const valid=rows=>Array.isArray(rows)&&new Set(rows.map(t=>t?.id)).size===rows.length&&rows.every(t=>t&&['id','title','session','priority','criteria','risk','next','evidenceType','evidenceRef','evidenceNote'].every(k=>typeof t[k]==='string')&&t.id&&t.title.trim()&&t.session.trim()&&t.criteria.trim()&&['Cao','Vừa','Thấp'].includes(t.priority)&&['','PR','Issue','Test','Log'].includes(t.evidenceType)&&['week','milestone','status'].every((k,i)=>Number.isInteger(t[k])&&t[k]>=0&&t[k]<[W.length,M.length,S.length][i])&&Number.isFinite(t.hours)&&t.hours>=.25&&t.hours<=84&&Number.isInteger(t.hours*4));
+let tasks=seed, tab=0, editing=null;
+try{const raw=localStorage.getItem(key);if(raw){const data=JSON.parse(raw);if(valid(data))tasks=data;else $('notice').textContent='Dữ liệu lưu trước đó không hợp lệ. Đang hiển thị kế hoạch mẫu.';}}catch{$('notice').textContent='Không đọc được dữ liệu cục bộ. Đang hiển thị kế hoạch mẫu.';}
+const days=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+const day=Object.fromEntries(days.map(p=>[p.type,p.value]));
+const current=Math.floor((Date.UTC(+day.year,+day.month-1,+day.day)-Date.UTC(2026,10,2))/604800000);
+const dates=W.map((w,i)=>'Tuần '+(i+1)+' · '+w);
+const has=t=>Boolean(t.evidenceType&&t.evidenceRef.trim()&&t.evidenceNote.trim());
+const total=ts=>ts.reduce((a,t)=>a+t.hours,0);
+const count=(ts,i)=>ts.filter(t=>t.status===i).length;
+const fmt=n=>n.toLocaleString('vi-VN');
+const form=$('form');
+$('week').innerHTML=options(dates,'Tất cả tuần');
+$('milestone').innerHTML=options(M.map(m=>m.name),'Tất cả mốc');
+form.elements.week.innerHTML=options(dates);
+form.elements.milestone.innerHTML=options(M.map(m=>m.name));
+form.elements.status.innerHTML=options(S);
+function save(next,message){
+ try{localStorage.setItem(key,JSON.stringify(next));tasks=next;$('notice').textContent=message;render();return true;}
+ catch{$('notice').textContent='Không lưu được vào trình duyệt. Dữ liệu trước đó vẫn được giữ.';return false;}
+}
+function filtered(){return tasks.filter(t=>($('week').value===''||t.week===+$('week').value)&&($('milestone').value===''||t.milestone===+$('milestone').value)&&(!$('missing').checked||!has(t)));}
+function badge(t){return has(t)?'<span class="tag ok">Đã ghi bằng chứng</span>':'<span class="tag warn">Thiếu bằng chứng</span>';}
+function openButton(t){return '<button class="open" data-edit="'+esc(t.id)+'">'+esc(t.title)+'</button>';}
+function ref(t){let u;try{u=new URL(t.evidenceRef);}catch{}return u&&['https:','http:'].includes(u.protocol)?'<a href="'+esc(u.href)+'" target="_blank" rel="noopener">'+esc(t.evidenceRef)+'</a>':esc(t.evidenceRef);}
+function card(t){return '<article class="task"><div class="line"><span class="tag">'+esc(t.priority)+'</span>'+badge(t)+'</div><h4>'+openButton(t)+'</h4><p class="muted">T'+(t.week+1)+' · '+esc(t.session)+' · '+fmt(t.hours)+' giờ</p><p>'+esc(t.next||t.criteria)+'</p></article>';}
+function render(){
+ const selected=$('week').value===''?current:+$('week').value;
+ const workload=selected>=0&&selected<W.length?total(tasks.filter(t=>t.week===selected)):null;
+ const missing=tasks.filter(t=>!has(t)).length;
+ $('stats').innerHTML='<div class="tile stats"><span>Hoàn tất · Toàn dự án</span><strong>'+count(tasks,3)+' / '+tasks.length+'</strong></div><div class="tile stats"><span>'+(workload===null?'Ngân sách mỗi tuần':'Tuần '+(selected+1)+' · Giờ dự kiến / ngân sách')+'</span><strong>'+(workload===null?'12 giờ':fmt(workload)+' / 12 giờ')+'</strong>'+(workload>12?'<span class="tag warn">Vượt '+fmt(workload-12)+' giờ</span>':'')+'</div><div class="tile stats"><span>Thiếu bằng chứng · Toàn dự án</span><strong>'+missing+' việc</strong></div>';
+ $('nav').innerHTML=['Roadmap','Timeline','Kanban','Checklist'].map((s,i)=>'<button data-tab="'+i+'" aria-pressed="'+(tab===i)+'">'+s+'</button>').join('');
+ $('filters').hidden=tab<2;
+ $('filters').style.display=tab<2?'none':'';
+ const ts=filtered();
+ if(tab===0){$('view').innerHTML='<div class="line"><h2>Ba mốc triển khai</h2><span class="muted">Dữ liệu khởi tạo là kế hoạch đề xuất.</span></div><br><div class="grid">'+M.map((m,i)=>{
+ const a=tasks.filter(t=>t.milestone===i), done=count(a,3), verified=a.filter(t=>t.status===3&&has(t)).length, gap=a.filter(t=>!has(t)).length;
+ return '<article class="panel"><div class="line"><span class="tag">M'+(i+1)+'</span><strong>'+m.date+'</strong></div><h3>'+m.name+'</h3><p>'+m.goal+'</p><div class="bar" aria-hidden="true"><span style="width:'+(a.length?100*verified/a.length:0)+'%"></span></div><p class="muted">'+done+'/'+a.length+' hoàn tất · '+verified+' hoàn tất có bằng chứng</p><div class="line"><span class="tag '+(gap?'warn':'ok')+'">'+gap+' thiếu bằng chứng</span><button data-m="'+i+'">Xem checklist ↗</button></div></article>';}).join('')+'</div>';return;}
+ if(tab===1){$('view').innerHTML='<div class="line"><h2>Kế hoạch theo tuần</h2><span class="muted">Ngân sách 12 giờ mỗi tuần</span></div><br><div class="timeline">'+W.map((w,i)=>{
+ const a=tasks.filter(t=>t.week===i), h=total(a);
+ return '<button class="week panel '+(i===current?'current ':'')+(h>12?'over':'')+'" data-w="'+i+'"><span class="eyebrow">Tuần '+(i+1)+(i===current?' · Hiện tại':'')+'</span><strong>'+w+'</strong><span>'+fmt(h)+' / 12 giờ · '+count(a,3)+'/'+a.length+' xong</span>'+([3,5,7].includes(i)?'<p class="tag">'+M[[3,5,7].indexOf(i)].name+'</p>':'')+'</button>';}).join('')+'</div>';return;}
+ if(tab===2){$('view').innerHTML='<div class="line"><h2>Bảng công việc</h2><span class="muted">Kéo thả giữa các cột hoặc đổi trạng thái trong công việc.</span></div><br><div class="board">'+S.map((s,i)=>'<div class="lane" data-lane="'+i+'"><h3>'+s+' · '+count(ts,i)+'</h3>'+ts.filter(t=>t.status===i).map(t=>'<div draggable="true" data-drag="'+esc(t.id)+'">'+card(t)+'</div>').join('')+'</div>').join('')+'</div>';return;}
+ $('view').innerHTML='<div class="line"><h2>Checklist kiểm chứng</h2><span class="muted">'+ts.length+' công việc · '+fmt(total(ts))+' giờ dự kiến</span></div><br><div class="list">'+(ts.length?ts.slice().sort((a,b)=>a.week-b.week||a.session.localeCompare(b.session,'vi',{numeric:true})).map(t=>'<article class="panel check"><input type="checkbox" data-check="'+esc(t.id)+'" aria-label="Hoàn tất '+esc(t.title)+'" '+(t.status===3?'checked':'')+'><div class="body"><div class="line"><strong>'+openButton(t)+'</strong>'+badge(t)+'</div><p class="muted">Tuần '+(t.week+1)+' · '+esc(t.session)+' · '+fmt(t.hours)+' giờ · '+M[t.milestone].name+' · '+S[t.status]+' · Ưu tiên '+esc(t.priority)+'</p><p><strong>Tiêu chí</strong> '+esc(t.criteria)+'</p>'+(t.risk?'<p><strong>Rủi ro</strong> '+esc(t.risk)+'</p>':'')+(t.evidenceType||t.evidenceRef||t.evidenceNote?'<p><strong>Bằng chứng '+esc(t.evidenceType)+'</strong> '+ref(t)+' '+esc(t.evidenceNote)+'</p>':'')+(t.next?'<p><strong>Bước tiếp</strong> '+esc(t.next)+'</p>':'')+'</div></article>').join(''):'<div class="panel empty">Không có công việc phù hợp bộ lọc.</div>')+'</div>';
+}
+function edit(t){
+ editing=t?.id??null;
+ $('editTitle').textContent=t?'Sửa công việc':'Thêm công việc';
+ $('delete').hidden=!t;
+ const w=$('week').value===''?Math.max(0,Math.min(current,7)):+$('week').value;
+ const m=$('milestone').value===''?(w<4?0:w<6?1:2):+$('milestone').value;
+ const row=t??{title:'',week:w,milestone:m,session:'',hours:2,status:0,priority:'Vừa',criteria:'',risk:'',next:'',evidenceType:'',evidenceRef:'',evidenceNote:''};
+ for(const [k,v] of Object.entries(row))if(form.elements.namedItem(k))form.elements.namedItem(k).value=v;
+ $('editor').showModal();
+}
+function updateStatus(id,status){const t=tasks.find(x=>x.id===id);if(t&&t.status!==status&&!save(tasks.map(x=>x.id===id?{...x,status}:x),'Đã cập nhật trạng thái.'))render();}
+$('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){tab=+b.dataset.tab;render();$('nav').querySelector('[aria-pressed=true]').focus();}};
+$('view').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.edit!==undefined)edit(tasks.find(t=>t.id===b.dataset.edit));
+ if(b.dataset.m!==undefined||b.dataset.w!==undefined){$('week').value=b.dataset.w??'';$('milestone').value=b.dataset.m??'';$('missing').checked=false;tab=3;render();$('nav').querySelector('[aria-pressed=true]').focus();}
+};
+$('view').onchange=e=>{if(e.target.dataset.check)updateStatus(e.target.dataset.check,e.target.checked?3:0);};
+let dragged=null;
+$('view').ondragstart=e=>{const el=e.target.closest('[data-drag]');if(el){dragged=el.dataset.drag;e.dataTransfer.setData('text/plain',dragged);e.dataTransfer.effectAllowed='move';}};
+$('view').ondragover=e=>{if(dragged&&e.target.closest('[data-lane]'))e.preventDefault();};
+$('view').ondrop=e=>{const lane=e.target.closest('[data-lane]');if(lane&&dragged){e.preventDefault();updateStatus(dragged,+lane.dataset.lane);dragged=null;}};
+$('view').ondragend=()=>dragged=null;
+for(const id of ['week','milestone','missing'])$(id).onchange=render;
+$('clear').onclick=()=>{$('week').value='';$('milestone').value='';$('missing').checked=false;render();};
+$('new').onclick=()=>edit();
+$('close').onclick=()=>$('editor').close();
+form.onsubmit=e=>{
+ e.preventDefault();
+ const t=Object.fromEntries([...new FormData(form)].map(([k,v])=>[k,v.trim()]));
+ for(const k of ['week','milestone','status','hours'])t[k]=+t[k];
+ t.id=editing??crypto.randomUUID();
+ if(!valid([t])){alert('Kiểm tra tên, phiên, tiêu chí và số giờ dự kiến.');return;}
+ if(save(editing?tasks.map(x=>x.id===editing?t:x):[...tasks,t],'Đã lưu công việc.'))$('editor').close();else alert($('notice').textContent);
+};
+$('delete').onclick=()=>{if(editing&&confirm('Xóa công việc này khỏi bảng triển khai?')&&save(tasks.filter(t=>t.id!==editing),'Đã xóa công việc.'))$('editor').close();};
+$('export').onclick=()=>{
+ const url=URL.createObjectURL(new Blob([JSON.stringify({version:1,tasks},null,2)],{type:'application/json'}));
+ const a=document.createElement('a');a.href=url;a.download='ai-office-ke-hoach.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$('import').onclick=()=>$('file').click();
+$('file').onchange=async()=>{
+ const file=$('file').files[0];$('file').value='';if(!file)return;
+ try{const data=JSON.parse(await file.text());if(data.version!==1||!valid(data.tasks))throw Error();if(confirm('Thay thế toàn bộ công việc hiện tại bằng '+data.tasks.length+' công việc từ tệp?'))save(data.tasks,'Đã nhập kế hoạch.');}
+ catch{$('notice').textContent='Tệp JSON không hợp lệ. Hãy chọn bản xuất từ AI Office.';}
+};
+render();
+</script><script src="./workflow.js" defer></script><script src="./office.js?v=4" defer></script></html>
