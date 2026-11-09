@@ -12,3 +12,13 @@ pip install -e ".[dev]"
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 pytest
 ```
+
+## AI Office Workflow Lab
+
+Serve the standalone browser demo from the repository root:
+
+```bash
+python -m http.server 8080 --bind 127.0.0.1 --directory frontend/public
+```
+
+Open <http://127.0.0.1:8080/workflow-lab/>. The lab simulates the engineering squad, including its message channels, status board, journal, and local checkpoint. The displayed API contract is a proposal. The demo uses browser storage and does not call the runtime or GitHub.
