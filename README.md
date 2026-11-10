@@ -15,12 +15,14 @@ pytest
 
 ## AI Office Workflow Lab
 
-Serve the standalone browser demo from the repository root:
+Start the loopback-only demo server with Node.js 22 or later:
 
 ```bash
-python -m http.server 8080 --bind 127.0.0.1 --directory frontend/public
+node frontend/workflow-lab-server/local.mjs
 ```
 
-Open <http://127.0.0.1:8080/workflow-lab/>. The lab simulates six-agent teams across multiple industries, including its message channels, status board, journal, and local checkpoint. The displayed API contract is a proposal. The demo uses browser storage and does not call the runtime or GitHub.
+Open <http://127.0.0.1:8080/workflow-lab/>. The task board starts empty and reads previously saved browser data. The 3D office runs simulated handoffs between six agents. Agent policies define skills, constraints, and allowed demo events.
 
-Add an industry in `frontend/public/workflow-lab/squads.js` with a label, a sample deliverable, and six role names in workflow-slot order. Demo checkpoints are scoped to the current protocol version.
+The short task form works without credentials. To enable AI planning, provide `OPENAI_API_KEY` in the server process environment. The key is read on the server. Keep this local server bound to loopback. The optional `WORKFLOW_LAB_PORT` defaults to 8080.
+
+Add industry profiles in `frontend/public/workflow-lab/squads.js` and corresponding role policies in `policies.js`. The simulated workflow uses browser storage and does not call the main runtime or GitHub.

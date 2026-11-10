@@ -24,19 +24,28 @@
 #wf-journal{max-height:285px;overflow:auto}#wf-journal button{text-align:left;overflow-wrap:anywhere}
 #wf-state{color:#225f44;overflow-wrap:anywhere}#wf-envelope{overflow:auto;background:#14223b;color:#eaf2ff;padding:12px;border-radius:8px}
 @media(max-width:750px){.wf-grid{grid-template-columns:1fr}}
-</style>
+.office-policy{background:#14223b;border:1px solid #344461;border-radius:9px;padding:9px;margin:12px 0;font-size:13px}.office-policy summary{cursor:pointer;font-weight:700}.office-policy dl{margin:9px 0 0}.office-policy dt{font-weight:700;margin-top:8px}.office-policy dd{margin:3px 0;color:#c2d1e7}.api-panel{margin-bottom:18px}.api-panel summary{cursor:pointer;font-weight:750}.api-panel p{margin:10px 0}.api-panel code{overflow-wrap:anywhere}.api-panel output{display:block;margin-top:8px}#task-details{margin:4px 0}#task-details summary{cursor:pointer;font-weight:700}.task-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}#plan-note{margin:0;font-size:13px}#plan-note:empty{display:none}@media(max-width:480px){.task-fields{grid-template-columns:1fr}}</style>
 <header><div class="wrap"><div class="top"><div class="brand"><span class="mark">AO</span> AI Office <span class="light">/ Bảng triển khai</span></div><a class="light" href="https://github.com/LeNhan18/multi-agent-ide" target="_blank" rel="noopener">LeNhan18/multi-agent-ide ↗</a></div><div class="hero"><div class="eyebrow lime">02/11 – 27/12/2026 · Kế hoạch 8 tuần</div><h1>Điều hành AI Office</h1><div class="line"><span class="light">Lập kế hoạch theo phiên và ghi bằng chứng cho từng mốc.</span><button class="primary" id="new">＋ Thêm công việc</button></div></div></div></header>
-<main class="wrap"><section id="office" aria-label="Văn phòng agent 3D"></section><section id="workflow" aria-label="Workflow Lab"></section><div class="grid stats" id="stats"></div><nav class="nav" id="nav" aria-label="Chế độ xem"></nav><div class="line filters" id="filters"><select id="week" aria-label="Tuần"></select><select id="milestone" aria-label="Mốc"></select><label><input type="checkbox" id="missing"> Chỉ hiện việc thiếu bằng chứng</label><button id="clear">Bỏ lọc</button></div><p id="notice" role="status"></p><section id="view" class="section"></section><div class="line foot muted"><span>Cập nhật thủ công · Dữ liệu lưu trong trình duyệt này.</span><div class="actions"><button id="export">Xuất JSON</button><button id="import">Nhập JSON</button><input type="file" accept=".json,application/json" hidden id="file"></div></div></main>
+<main class="wrap"><details class="panel api-panel" id="api-config">
+<summary>Cấu hình API · OpenAI <span id="api-badge" class="tag">Đang kiểm tra</span></summary>
+<p>Trong phần quản lý Site, mở <strong>Environment variables</strong>, thêm <code>OPENAI_API_KEY</code> dưới dạng <strong>Secret</strong>, rồi áp dụng cấu hình cho bản triển khai.</p>
+<p><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Mở trang quản lý API key của OpenAI ↗</a></p>
+<button type="button" id="api-check">Kiểm tra kết nối</button>
+<output id="api-result" role="status"></output>
+</details><section id="office" aria-label="Văn phòng agent 3D"></section><section id="workflow" aria-label="Workflow Lab"></section><div class="grid stats" id="stats"></div><nav class="nav" id="nav" aria-label="Chế độ xem"></nav><div class="line filters" id="filters"><select id="week" aria-label="Tuần"></select><select id="milestone" aria-label="Mốc"></select><label><input type="checkbox" id="missing"> Chỉ hiện việc thiếu bằng chứng</label><button id="clear">Bỏ lọc</button></div><p id="notice" role="status"></p><section id="view" class="section"></section><div class="line foot muted"><span>Cập nhật thủ công · Dữ liệu lưu trong trình duyệt này.</span><div class="actions"><button id="export">Xuất JSON</button><button id="import">Nhập JSON</button><input type="file" accept=".json,application/json" hidden id="file"></div></div></main>
 <dialog id="editor"><div class="line"><h2 id="editTitle">Công việc</h2><button id="close" aria-label="Đóng">✕</button></div><form id="form">
-<label class="full">Tên công việc<input name="title" required maxlength="160"></label>
+<label class="full" id="prompt-field">Bạn muốn làm gì?<textarea id="task-prompt" rows="3" maxlength="1200" placeholder="Ví dụ: Đối chiếu BOQ với báo giá đèn"></textarea></label>
+<p id="plan-note" class="full muted" role="status"></p>
+<details id="task-details" class="full"><summary>Chi tiết tùy chọn</summary><div class="task-fields">
+<label class="full">Tên công việc<input name="title" maxlength="160"></label>
 <label>Mốc<select name="milestone"></select></label><label>Tuần<select name="week"></select></label>
-<label>Phiên làm việc<input name="session" required placeholder="VD: Phiên 1 · Thứ Hai"></label><label>Thời lượng dự kiến (giờ)<input name="hours" type="number" min="0.25" step="0.25" max="84" required></label>
+<label>Phiên làm việc<input name="session" placeholder="VD: Phiên 1 · Thứ Hai"></label><label>Thời lượng dự kiến (giờ)<input name="hours" type="number" min="0.25" step="0.25" max="84"></label>
 <label>Trạng thái<select name="status"></select></label><label>Ưu tiên<select name="priority"><option>Cao</option><option>Vừa</option><option>Thấp</option></select></label>
-<label class="full">Tiêu chí kiểm chứng<textarea name="criteria" rows="2" required></textarea></label><label class="full">Rủi ro<textarea name="risk" rows="2"></textarea></label>
+<label class="full">Tiêu chí kiểm chứng<textarea name="criteria" rows="2"></textarea></label><label class="full">Rủi ro<textarea name="risk" rows="2"></textarea></label>
 <label>Loại bằng chứng<select name="evidenceType"><option value="">Chưa chọn</option><option>PR</option><option>Issue</option><option>Test</option><option>Log</option></select></label>
 <label>Link hoặc tham chiếu bằng chứng<input name="evidenceRef" placeholder="URL, lệnh test hoặc đường dẫn log"></label>
 <label class="full">Kết quả quan sát được<textarea name="evidenceNote" rows="2" placeholder="VD: Test pass trên commit abc123"></textarea></label><label class="full">Bước tiếp theo<textarea name="next" rows="2"></textarea></label>
-<div class="full line"><button type="button" id="delete" class="danger">Xóa việc</button><button class="primary" type="submit">Lưu công việc</button></div></form></dialog>
+</div></details><div class="full actions"><button type="button" id="plan-task">AI đề xuất</button><button type="button" id="delete" class="danger">Xóa việc</button><button class="primary" type="submit">Lưu công việc</button></div></form></dialog>
 <script>
 'use strict';
 const M=[
@@ -46,24 +55,13 @@ const M=[
 ];
 const W=['02–08/11','09–15/11','16–22/11','23–29/11','30/11–06/12','07–13/12','14–20/12','21–27/12'];
 const S=['Chờ làm','Đang làm','Bị chặn','Hoàn tất'];
-const plans=[
-[['Rà bộ khung và điểm vào CLI','Xác định lệnh chạy và cấu trúc module trên một commit cụ thể.','Chưa xác nhận bộ khung đã có trên nhánh mặc định.','Mở repo và ghi commit đang dùng.'],['Chốt luồng squad','Mô tả đầu vào, đầu ra và điều kiện chuyển vai trò.','Vai trò duyệt và merge có thể chồng nhau.','Liệt kê các bước chạy mẫu.'],['Chuẩn bị fixture CLI','Có fixture nhỏ chạy lặp lại được và kết quả mong đợi.','Fixture phụ thuộc môi trường.','Chọn một thay đổi đơn giản cho kịch bản.']],
-[['Dựng lệnh điều phối squad','Một lệnh CLI chạy fixture và trả về kết quả có thể kiểm tra.','Lỗi giữa phiên có thể mất dấu trạng thái.','Chốt tham số đầu vào cho CLI.'],['Nối vòng làm → duyệt → merge','Test luồng approve đi đến trạng thái merge.','Merge có thể xảy ra khi chưa có approve.','Tạo fixture có phản hồi approve.'],['Tách các kết quả duyệt','Test approve, reject và lỗi của reviewer cho kết quả riêng.','Lỗi hạ tầng bị tính thành reject.','Viết bảng chuyển trạng thái.']],
-[['Lưu checkpoint','Checkpoint lưu bước hiện tại, số lần reject và định danh phiên.','Lưu dở gây hỏng checkpoint.','Chọn định dạng lưu và mô phỏng lỗi ghi.'],['Khôi phục phiên chạy','Dừng giữa phiên rồi tiếp tục từ checkpoint mà không lặp bước đã xong.','Replay có thể lặp thao tác merge.','Chọn điểm ngắt giữa review và merge.'],['Dừng sau 3 lần reject','Test xác nhận reject thứ 3 chuyển sang chờ người và không thử lần 4.','Đếm sai sau resume.','Kiểm tra đếm reject qua hai lần chạy.']],
-[['Chạy nghiệm thu M1','Có log từ phiên approve đến merge và phiên bị reject 3 lần.','Chỉ chạy đường thành công.','Chạy lại cả hai fixture.'],['Thử resume trên phiên thật','Log trước và sau resume có cùng mã phiên và không lặp thao tác.','Checkpoint cũ không tương thích.','Lưu log của lần chạy bị ngắt.'],['Chốt bằng chứng Terminal Office','Gắn PR hoặc test/log theo commit cho từng tiêu chí M1.','Bằng chứng không khớp phiên bản demo.','Đối chiếu commit và lệnh tái hiện.']],
-[['Cấu hình Docker giới hạn tài nguyên','Xác nhận giới hạn CPU/RAM trên container đang chạy.','Cấu hình khai báo chưa được áp dụng khi chạy.','Ghi thông số giới hạn và lệnh kiểm tra.'],['Thử job vượt giới hạn','Thu được kết quả và log khi job vượt RAM hoặc chạm giới hạn CPU.','Job treo làm chậm phiên chạy.','Chuẩn bị fixture tải CPU và RAM riêng.'],['Ghi nhật ký append-only','Các sự kiện ghi nối tiếp, nội dung cũ giữ nguyên qua lần chạy tiếp theo.','Nhiều worker có thể ghi xen dòng.','Chốt schema sự kiện và mã phiên.']],
-[['Cho Auditor đọc log','Auditor truy xuất được các sự kiện theo mã phiên bằng giao diện đọc.','Auditor có quyền ghi vào log.','Kiểm tra quyền của tài khoản Auditor.'],['Test đường lỗi và log','Log ghi kết quả Docker lỗi và lỗi ghi log được phát hiện.','Thông tin nhạy cảm xuất hiện trong log.','Thử fixture lỗi với dữ liệu giả.'],['Chốt bằng chứng Safety & Observability','Gắn kết quả kiểm tra giới hạn, append-only và quyền Auditor.','Thiếu log tái hiện ca vượt tài nguyên.','Ghi lệnh chạy kèm commit.']],
-[['Dựng màn hình danh sách phiên','UI hiển thị đúng mã phiên, trạng thái và thời điểm từ dữ liệu demo.','Dữ liệu demo khác schema thực.','Đối chiếu với log mẫu M2.'],['Dựng chi tiết phiên và kết quả duyệt','Mở phiên xem được thứ tự sự kiện và kết quả duyệt.','Log thiếu trường làm hỏng màn hình.','Thử phiên có sự kiện thiếu trường tùy chọn.'],['Hiển thị phiên chờ người','UI thể hiện rõ dừng sau 3 lần reject và bước tiếp theo.','Người xem nhầm chờ người với đang chạy.','Dùng fixture reject từ M1.']],
-[['Tích hợp dữ liệu demo end-to-end','Một phiên CLI xuất dữ liệu mà UI đọc và hiển thị được.','Môi trường demo thiếu đường dẫn dữ liệu.','Chạy từ checkout sạch.'],['Diễn tập UI Demo','Kiểm tra luồng thành công, chờ người và lỗi hiển thị.','Demo phụ thuộc dữ liệu cục bộ chưa chuẩn bị.','Chuẩn bị fixture dự phòng.'],['Chốt bằng chứng UI Demo','Gắn test hoặc log kèm commit và các bước tái hiện demo.','Bằng chứng chỉ cho thấy giao diện tĩnh.','Quay lại luồng chạy và đối chiếu dữ liệu.']]
-];
 const key='ai-office-tracker-v1';
-const seed=plans.flatMap((items,i)=>items.map(([title,criteria,risk,next],j)=>({id:'task-'+i+'-'+j,title,milestone:i<4?0:i<6?1:2,week:i,session:'Phiên '+(j+1),hours:[4,4,4][j],status:0,priority:j===2?'Vừa':'Cao',criteria,risk,next,evidenceType:'',evidenceRef:'',evidenceNote:''})));
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const options=(arr,first)=> (first?'<option value="">'+first+'</option>':'')+arr.map((x,i)=>'<option value="'+i+'">'+esc(x)+'</option>').join('');
 const valid=rows=>Array.isArray(rows)&&new Set(rows.map(t=>t?.id)).size===rows.length&&rows.every(t=>t&&['id','title','session','priority','criteria','risk','next','evidenceType','evidenceRef','evidenceNote'].every(k=>typeof t[k]==='string')&&t.id&&t.title.trim()&&t.session.trim()&&t.criteria.trim()&&['Cao','Vừa','Thấp'].includes(t.priority)&&['','PR','Issue','Test','Log'].includes(t.evidenceType)&&['week','milestone','status'].every((k,i)=>Number.isInteger(t[k])&&t[k]>=0&&t[k]<[W.length,M.length,S.length][i])&&Number.isFinite(t.hours)&&t.hours>=.25&&t.hours<=84&&Number.isInteger(t.hours*4));
-let tasks=seed, tab=0, editing=null;
-try{const raw=localStorage.getItem(key);if(raw){const data=JSON.parse(raw);if(valid(data))tasks=data;else $('notice').textContent='Dữ liệu lưu trước đó không hợp lệ. Đang hiển thị kế hoạch mẫu.';}}catch{$('notice').textContent='Không đọc được dữ liệu cục bộ. Đang hiển thị kế hoạch mẫu.';}
+let tasks=[], tab=0, editing=null;
+try{const raw=localStorage.getItem(key);if(raw){const data=JSON.parse(raw);if(valid(data))tasks=data;else $('notice').textContent='Dữ liệu lưu trước đó không hợp lệ.';}}catch{$('notice').textContent='Không đọc được dữ liệu cục bộ.';}
 const days=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
 const day=Object.fromEntries(days.map(p=>[p.type,p.value]));
 const current=Math.floor((Date.UTC(+day.year,+day.month-1,+day.day)-Date.UTC(2026,10,2))/604800000);
@@ -96,24 +94,37 @@ function render(){
  $('filters').hidden=tab<2;
  $('filters').style.display=tab<2?'none':'';
  const ts=filtered();
- if(tab===0){$('view').innerHTML='<div class="line"><h2>Ba mốc triển khai</h2><span class="muted">Dữ liệu khởi tạo là kế hoạch đề xuất.</span></div><br><div class="grid">'+M.map((m,i)=>{
+ if(tab===0){$('view').innerHTML='<div class="line"><h2>Ba mốc triển khai</h2><span class="muted">Theo dõi công việc bạn đã lưu.</span></div><br><div class="grid">'+M.map((m,i)=>{
  const a=tasks.filter(t=>t.milestone===i), done=count(a,3), verified=a.filter(t=>t.status===3&&has(t)).length, gap=a.filter(t=>!has(t)).length;
  return '<article class="panel"><div class="line"><span class="tag">M'+(i+1)+'</span><strong>'+m.date+'</strong></div><h3>'+m.name+'</h3><p>'+m.goal+'</p><div class="bar" aria-hidden="true"><span style="width:'+(a.length?100*verified/a.length:0)+'%"></span></div><p class="muted">'+done+'/'+a.length+' hoàn tất · '+verified+' hoàn tất có bằng chứng</p><div class="line"><span class="tag '+(gap?'warn':'ok')+'">'+gap+' thiếu bằng chứng</span><button data-m="'+i+'">Xem checklist ↗</button></div></article>';}).join('')+'</div>';return;}
  if(tab===1){$('view').innerHTML='<div class="line"><h2>Kế hoạch theo tuần</h2><span class="muted">Ngân sách 12 giờ mỗi tuần</span></div><br><div class="timeline">'+W.map((w,i)=>{
  const a=tasks.filter(t=>t.week===i), h=total(a);
  return '<button class="week panel '+(i===current?'current ':'')+(h>12?'over':'')+'" data-w="'+i+'"><span class="eyebrow">Tuần '+(i+1)+(i===current?' · Hiện tại':'')+'</span><strong>'+w+'</strong><span>'+fmt(h)+' / 12 giờ · '+count(a,3)+'/'+a.length+' xong</span>'+([3,5,7].includes(i)?'<p class="tag">'+M[[3,5,7].indexOf(i)].name+'</p>':'')+'</button>';}).join('')+'</div>';return;}
  if(tab===2){$('view').innerHTML='<div class="line"><h2>Bảng công việc</h2><span class="muted">Kéo thả giữa các cột hoặc đổi trạng thái trong công việc.</span></div><br><div class="board">'+S.map((s,i)=>'<div class="lane" data-lane="'+i+'"><h3>'+s+' · '+count(ts,i)+'</h3>'+ts.filter(t=>t.status===i).map(t=>'<div draggable="true" data-drag="'+esc(t.id)+'">'+card(t)+'</div>').join('')+'</div>').join('')+'</div>';return;}
- $('view').innerHTML='<div class="line"><h2>Checklist kiểm chứng</h2><span class="muted">'+ts.length+' công việc · '+fmt(total(ts))+' giờ dự kiến</span></div><br><div class="list">'+(ts.length?ts.slice().sort((a,b)=>a.week-b.week||a.session.localeCompare(b.session,'vi',{numeric:true})).map(t=>'<article class="panel check"><input type="checkbox" data-check="'+esc(t.id)+'" aria-label="Hoàn tất '+esc(t.title)+'" '+(t.status===3?'checked':'')+'><div class="body"><div class="line"><strong>'+openButton(t)+'</strong>'+badge(t)+'</div><p class="muted">Tuần '+(t.week+1)+' · '+esc(t.session)+' · '+fmt(t.hours)+' giờ · '+M[t.milestone].name+' · '+S[t.status]+' · Ưu tiên '+esc(t.priority)+'</p><p><strong>Tiêu chí</strong> '+esc(t.criteria)+'</p>'+(t.risk?'<p><strong>Rủi ro</strong> '+esc(t.risk)+'</p>':'')+(t.evidenceType||t.evidenceRef||t.evidenceNote?'<p><strong>Bằng chứng '+esc(t.evidenceType)+'</strong> '+ref(t)+' '+esc(t.evidenceNote)+'</p>':'')+(t.next?'<p><strong>Bước tiếp</strong> '+esc(t.next)+'</p>':'')+'</div></article>').join(''):'<div class="panel empty">Không có công việc phù hợp bộ lọc.</div>')+'</div>';
+ $('view').innerHTML='<div class="line"><h2>Checklist kiểm chứng</h2><span class="muted">'+ts.length+' công việc · '+fmt(total(ts))+' giờ dự kiến</span></div><br><div class="list">'+(ts.length?ts.slice().sort((a,b)=>a.week-b.week||a.session.localeCompare(b.session,'vi',{numeric:true})).map(t=>'<article class="panel check"><input type="checkbox" data-check="'+esc(t.id)+'" aria-label="Hoàn tất '+esc(t.title)+'" '+(t.status===3?'checked':'')+'><div class="body"><div class="line"><strong>'+openButton(t)+'</strong>'+badge(t)+'</div><p class="muted">Tuần '+(t.week+1)+' · '+esc(t.session)+' · '+fmt(t.hours)+' giờ · '+M[t.milestone].name+' · '+S[t.status]+' · Ưu tiên '+esc(t.priority)+'</p>'+(typeof t.description==='string'?'<p><strong>Mô tả</strong> '+esc(t.description)+'</p>':'')+'<p><strong>Tiêu chí</strong> '+esc(t.criteria)+'</p>'+(t.risk?'<p><strong>Rủi ro</strong> '+esc(t.risk)+'</p>':'')+(t.evidenceType||t.evidenceRef||t.evidenceNote?'<p><strong>Bằng chứng '+esc(t.evidenceType)+'</strong> '+ref(t)+' '+esc(t.evidenceNote)+'</p>':'')+(t.next?'<p><strong>Bước tiếp</strong> '+esc(t.next)+'</p>':'')+'</div></article>').join(''):'<div class="panel empty">'+(tasks.length?'Không có công việc phù hợp bộ lọc.':'Chưa có công việc. Bấm Thêm công việc để bắt đầu.')+'</div>')+'</div>';
+}
+let planRequest=null;
+const promptField=$('task-prompt'),planButton=$('plan-task'),planNote=$('plan-note');
+function resetPlanner(){
+ planRequest?.abort();planRequest=null;planButton.disabled=false;
 }
 function edit(t){
  editing=t?.id??null;
  $('editTitle').textContent=t?'Sửa công việc':'Thêm công việc';
  $('delete').hidden=!t;
+ resetPlanner();
+ $('prompt-field').hidden=!!t;
+ $('prompt-field').style.display=t?'none':'';
+ planButton.hidden=!!t;
+ promptField.value='';
+ planNote.textContent='';
+ $('task-details').open=!!t;
  const w=$('week').value===''?Math.max(0,Math.min(current,7)):+$('week').value;
  const m=$('milestone').value===''?(w<4?0:w<6?1:2):+$('milestone').value;
  const row=t??{title:'',week:w,milestone:m,session:'',hours:2,status:0,priority:'Vừa',criteria:'',risk:'',next:'',evidenceType:'',evidenceRef:'',evidenceNote:''};
  for(const [k,v] of Object.entries(row))if(form.elements.namedItem(k))form.elements.namedItem(k).value=v;
  $('editor').showModal();
+ if(!t)promptField.focus();
 }
 function updateStatus(id,status){const t=tasks.find(x=>x.id===id);if(t&&t.status!==status&&!save(tasks.map(x=>x.id===id?{...x,status}:x),'Đã cập nhật trạng thái.'))render();}
 $('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){tab=+b.dataset.tab;render();$('nav').querySelector('[aria-pressed=true]').focus();}};
@@ -131,9 +142,56 @@ for(const id of ['week','milestone','missing'])$(id).onchange=render;
 $('clear').onclick=()=>{$('week').value='';$('milestone').value='';$('missing').checked=false;render();};
 $('new').onclick=()=>edit();
 $('close').onclick=()=>$('editor').close();
+$('editor').addEventListener('close',resetPlanner);
+promptField.addEventListener('input',()=>{
+ if(!editing){
+  resetPlanner();
+  form.elements.title.value='';
+  form.elements.criteria.value='';
+  form.elements.risk.value='';
+  form.elements.next.value='';
+  form.elements.hours.value='2';
+  form.elements.priority.value='Vừa';
+  planNote.textContent='';
+ }
+});
+planButton.onclick=async()=>{
+ const prompt=promptField.value.trim();
+ if(!prompt){planNote.textContent='Nhập một câu mô tả công việc.';promptField.focus();return;}
+ const request=new AbortController();planRequest=request;planButton.disabled=true;
+ planNote.textContent='AI đang lập kế hoạch…';
+ try{
+  const response=await fetch('/api/openai/task-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt}),signal:request.signal});
+  const result=await response.json();
+  if(planRequest!==request)return;
+  if(!response.ok){
+   planNote.textContent=result.status==='missing'?'Chưa có API key. Bạn vẫn có thể lưu công việc từ câu mô tả.':'AI chưa tạo được đề xuất. Thử lại hoặc lưu câu mô tả.';
+   return;
+  }
+  for(const key of ['title','criteria','risk','next','priority','hours'])form.elements[key].value=result.plan[key];
+  $('task-details').open=true;
+  planNote.textContent='Đã điền đề xuất. Bạn có thể chỉnh lại trước khi lưu.';
+ }catch{
+  if(planRequest===request)planNote.textContent='Không kết nối được. Bạn vẫn có thể lưu câu mô tả.';
+ }finally{
+  if(planRequest===request)resetPlanner();
+ }
+};
 form.onsubmit=e=>{
  e.preventDefault();
  const t=Object.fromEntries([...new FormData(form)].map(([k,v])=>[k,v.trim()]));
+ if(!editing){
+  const prompt=promptField.value.trim();
+  if(!t.title&&prompt)t.title=prompt.replace(/\s+/g,' ').slice(0,160);
+  if(!t.title){planNote.textContent='Nhập một câu mô tả công việc.';promptField.focus();return;}
+  t.session||='Chưa xếp phiên';
+  t.criteria||='Chưa xác định tiêu chí kiểm chứng.';
+  if(prompt&&prompt!==t.title)t.description=prompt;
+ }
+ if(editing){
+  const original=tasks.find(row=>row.id===editing);
+  if(original?.description)t.description=original.description;
+ }
  for(const k of ['week','milestone','status','hours'])t[k]=+t[k];
  t.id=editing??crypto.randomUUID();
  if(!valid([t])){alert('Kiểm tra tên, phiên, tiêu chí và số giờ dự kiến.');return;}
@@ -151,4 +209,4 @@ $('file').onchange=async()=>{
  catch{$('notice').textContent='Tệp JSON không hợp lệ. Hãy chọn bản xuất từ AI Office.';}
 };
 render();
-</script><script src="./squads.js" defer></script><script src="./workflow.js?v=2" defer></script><script src="./office.js?v=5" defer></script></html>
+</script><script src="./squads.js" defer></script><script src="./policies.js" defer></script><script src="./workflow.js?v=4" defer></script><script src="./office.js?v=7" defer></script><script src="./api-settings.js" defer></script></html>

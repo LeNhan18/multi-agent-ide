@@ -6,7 +6,7 @@ const positions=[
 ];
 let agents=[];
 const host=document.getElementById('office');
-host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D sáu agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Chọn một trạm để xem vai trò</div></div><aside><label>Đội theo ngành <select id="office-squad"></select></label><p id="office-artifact"></p><div class="office-picks"></div><h3 id="office-agent"></h3><p id="office-role"></p><label>Kịch bản <select id="office-scenario"><option value="approve">Duyệt → Bàn giao</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
+host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D sáu agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Theo dõi kiện hàng giữa các trạm</div></div><aside><label>Đội theo ngành <select id="office-squad"></select></label><p id="office-artifact"></p><div class="office-picks"></div><h3 id="office-agent"></h3><details class="office-policy" open><summary>Kỹ năng và ràng buộc</summary><dl id="office-policy"></dl></details><label>Kịch bản <select id="office-scenario"><option value="approve">Duyệt → Bàn giao</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
 const canvas=host.querySelector('canvas'),ctx=canvas.getContext('2d');
 const by=id=>document.getElementById(id);
 let angle=-.56, pitch=.59, zoom=1, selected=0, drag=null, hits=[], run=null, frame=0, packet=null;
@@ -28,7 +28,16 @@ function select(i){
  selected=i;
  [...picks.children].forEach((b,j)=>b.setAttribute('aria-pressed',i===j));
  by('office-agent').textContent=agents[i][0]+' · '+agents[i][1];
- by('office-role').textContent='Sản phẩm phụ trách: '+agents[i][5];
+ const {specialty,skills,scope,limit,industryLimit,output}=window.officePolicies[squad.value][i];
+ const policy=by('office-policy');
+ policy.replaceChildren();
+ for(const [label,value] of [
+  ['Kỹ năng ngành',specialty],['Kỹ năng vai trò',skills],['Phạm vi được phép',scope],
+  ['Ràng buộc vị trí',limit],['Ràng buộc ngành',industryLimit],['Đầu ra cần bàn giao',output]
+ ]){
+  const term=document.createElement('dt'),description=document.createElement('dd');
+  term.textContent=label;description.textContent=value;policy.append(term,description);
+ }
  draw();
 }
 const routes=[[0,1,'#53e2a6'],[1,2,'#79afff'],[1,0,'#f6bf74'],[2,3,'#cf9cf5'],[1,3,'#cf9cf5'],[4,5,'#6ce4ed'],[5,0,'#f18eab']];
@@ -66,7 +75,6 @@ function draw(){
   ctx.setLineDash([]);
   const a1=points[1],b1=points[2],mx=(a1.x+b1.x)/2,my=(a1.y+b1.y)/2,theta=Math.atan2(b1.y-a1.y,b1.x-a1.x);
   path([{x:mx+5*Math.cos(theta),y:my+5*Math.sin(theta)},{x:mx+5*Math.cos(theta+2.4),y:my+5*Math.sin(theta+2.4)},{x:mx+5*Math.cos(theta-2.4),y:my+5*Math.sin(theta-2.4)}],color);
-  if(packet?.route===i){const t=packet.t*3,j=Math.min(2,Math.floor(t)),f=t-j,p=points[j],q=points[j+1];ctx.beginPath();ctx.arc(p.x+(q.x-p.x)*f,p.y+(q.y-p.y)*f,5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.shadowColor=color;ctx.shadowBlur=14;ctx.fill();ctx.shadowBlur=0;}
  });
  const polygons=[];
  function box(x,y,z,a,b,c,color){
@@ -74,6 +82,36 @@ function draw(){
   faces.forEach((f,i)=>{const points=f.map(j=>vertices[j]);const [p,q,r]=points;
    if((q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x)>0)polygons.push({points,color:tint(color,[.68,1,.52,1.12,.79,.88][i]),depth:points.reduce((n,p)=>n+p.depth,0)/4});
   });
+ }
+ if(packet){
+  const [from,to,color]=routes[packet.route];
+  const points=wire(from,to);
+  const smooth=t=>t*t*(3-2*t);
+  const t=packet.t;
+  const travel=smooth(Math.max(0,Math.min(1,(t-.17)/.66)));
+  const lift=smooth(Math.min(1,t/.17,(1-t)/.17));
+  const breaks=[0,.23,.77,1];
+  const segment=travel<breaks[1]?0:travel<breaks[2]?1:2;
+  const f=(travel-breaks[segment])/(breaks[segment+1]-breaks[segment]);
+  const [ax,az]=points[segment], [bx,bz]=points[segment+1];
+  const x=ax+(bx-ax)*f, z=az+(bz-az)*f, y=1.20+.57*lift;
+  const shadow=floor(x,z);
+  ctx.beginPath();
+  ctx.ellipse(shadow.x,shadow.y,size*.30,size*.11,0,0,Math.PI*2);
+  ctx.fillStyle='#0308159e';ctx.fill();
+  if(t>=.83){
+   const ring=(t-.83)/.17;
+   const center=floor(...points[3]);
+   ctx.beginPath();
+   ctx.ellipse(center.x,center.y,size*(.25+.47*ring),size*(.10+.18*ring),0,0,Math.PI*2);
+   ctx.globalAlpha=1-.65*ring;ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;
+  }
+  const cardboard=packet.route===2?'#cc9669':'#d8a46c';
+  box(x,y,z,.63,.46,.53,cardboard);
+  box(x,y+.231,z,.15,.012,.535,'#f5d29c');
+  box(x,y,z+.267,.15,.46,.009,'#f5d29c');
+  box(x+.16,y+.025,z+.274,.135,.11,.012,'#fff5db');
+  box(x-.19,y-.10,z+.273,.14,.055,.012,color);
  }
  function oval(x,y,z,rx,ry,rz,color,tilt=0,detail=12){
   const vertices=[], rings=detail===16?10:6;
@@ -195,9 +233,10 @@ button.onclick=()=>{
  function animate(now){
   if(!run)return;
   if(run.start===null){run.start=now;status.textContent=steps[run.index][1];}
-  const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?650:1150;
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const duration=reduced?650:1450;
   const t=Math.min(1,(now-run.start)/duration);
-  packet={route:steps[run.index][0],t:duration===650?1:t};draw();
+  packet={route:steps[run.index][0],t:reduced?1:t};draw();
   if(t===1){workflow.advance();run.index++;run.start=null;
    if(run.index===steps.length){run=null;packet=null;button.textContent='▶ Chạy mô phỏng';scenario.disabled=false;squad.disabled=false;status.textContent=reject?'Chờ người xử lý sau 3 lần reject.':'Đã bàn giao và ghi nhận sự kiện.';draw();return;}
   }
