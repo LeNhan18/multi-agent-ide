@@ -29,6 +29,10 @@ class AgentSpec(BaseModel):
     output_schema: dict[str, Any] | None = None
     llm: ModelSettings = Field(default_factory=ModelSettings, alias="model_config")
     is_reviewer: bool = False
+    reports_to: str | None = None
+    reviews: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
+    budget_usd: float = Field(default=1.0, ge=0, allow_inf_nan=False)
     hitl_tools: list[str] = Field(
         default_factory=list,
         description="Tools that require human approval (interrupt_before).",
@@ -56,6 +60,21 @@ class SquadTemplate(BaseModel):
             raise ValueError("member role_name values must be unique")
         if self.supervisor.role_name in names:
             raise ValueError("supervisor role_name must differ from members")
+        agents = [self.supervisor, *self.members]
+        by_name = {agent.role_name: agent for agent in agents}
+        for agent in agents:
+            if agent.reports_to is not None and (agent.reports_to not in by_name or agent.reports_to == agent.role_name):
+                raise ValueError(f"invalid reports_to for {agent.role_name}")
+            if agent.reviews and not agent.is_reviewer:
+                raise ValueError(f"{agent.role_name} is not a reviewer")
+            for target in agent.reviews:
+                if target not in by_name or target == agent.role_name:
+                    raise ValueError(f"invalid review target {target}")
+                if agent.llm.provider.strip().casefold() == by_name[target].llm.provider.strip().casefold():
+                    raise ValueError(f"reviewer and {target} must use different providers")
+        for member in self.members:
+            if not member.is_reviewer and not any(member.role_name in reviewer.reviews for reviewer in agents if reviewer.is_reviewer):
+                raise ValueError(f"{member.role_name} has no reviewer")
         return self
 
 

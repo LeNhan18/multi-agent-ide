@@ -18,4 +18,6 @@ members:
     system_prompt: Compare extracted clauses against the checklist and list risks with severity and citations. Never invent clauses.
     allowed_mcp_tools: [read_file_lines, apply_search_replace_diff]
     is_reviewer: true
+    reviews: [extractor]
+    model_config: { provider: openai, model: gpt-4o-mini }
     hitl_tools: [overwrite_original_document]
