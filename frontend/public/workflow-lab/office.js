@@ -1,27 +1,37 @@
 (() => {
-const agents = [
- ['Maker','Thực thi','#53e2a6',-3,-2.4,'Nhận yêu cầu và tạo thay đổi để gửi duyệt.'],
- ['Reviewer','Duyệt','#79afff',3,-2.4,'Kiểm tra thay đổi. Approve để chuyển sang Merge, hoặc reject và trả về Maker.'],
- ['Merger','Hợp nhất','#f6bf74',3,2.4,'Hợp nhất thay đổi sau khi Reviewer approve.'],
- ['Auditor','Đọc nhật ký','#cf9cf5',-3,2.4,'Đọc các sự kiện trong nhật ký để đối chiếu hoạt động của squad.']
+const {slots,profiles}=window.officeSquads;
+const positions=[
+ ['#53e2a6',0,-2.4],['#79afff',3,-2.4],['#f6bf74',3,2.4],
+ ['#cf9cf5',0,2.4],['#6ce4ed',-3,2.4],['#f18eab',-3,-2.4]
 ];
+let agents=[];
 const host=document.getElementById('office');
-host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D bốn agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Chọn một trạm để xem vai trò</div></div><aside><div class="office-picks"></div><h3 id="office-agent"></h3><p id="office-role"></p><label>Kịch bản <select id="office-scenario"><option value="approve">Approve → Merge</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
+host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D sáu agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Chọn một trạm để xem vai trò</div></div><aside><label>Đội theo ngành <select id="office-squad"></select></label><p id="office-artifact"></p><div class="office-picks"></div><h3 id="office-agent"></h3><p id="office-role"></p><label>Kịch bản <select id="office-scenario"><option value="approve">Duyệt → Bàn giao</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
 const canvas=host.querySelector('canvas'),ctx=canvas.getContext('2d');
 const by=id=>document.getElementById(id);
 let angle=-.56, pitch=.59, zoom=1, selected=0, drag=null, hits=[], run=null, frame=0, packet=null;
 const picks=host.querySelector('.office-picks');
-agents.forEach(([name,,color],i)=>{
- const b=document.createElement('button');b.textContent=name;b.style.setProperty('--agent',color);b.onclick=()=>select(i);picks.append(b);
-});
+const squad=by('office-squad');
+for(const [key,[label]] of Object.entries(profiles))squad.add(new Option(label,key));
+function loadSquad(){
+ const [,artifact,roles]=profiles[squad.value];
+ by('office-artifact').textContent='Sản phẩm mô phỏng: '+artifact;
+ agents=roles.map((role,i)=>[role,slots[i],...positions[i],artifact]);
+ picks.replaceChildren();
+ agents.forEach(([name,,color],i)=>{
+  const b=document.createElement('button');b.textContent=name;b.style.setProperty('--agent',color);b.onclick=()=>select(i);picks.append(b);
+ });
+ select(0);
+}
+squad.onchange=loadSquad;
 function select(i){
  selected=i;
  [...picks.children].forEach((b,j)=>b.setAttribute('aria-pressed',i===j));
  by('office-agent').textContent=agents[i][0]+' · '+agents[i][1];
- by('office-role').textContent=agents[i][5];
+ by('office-role').textContent='Sản phẩm phụ trách: '+agents[i][5];
  draw();
 }
-const routes=[[0,1,'#53e2a6'],[1,2,'#79afff'],[1,0,'#f6bf74'],[2,3,'#cf9cf5'],[1,3,'#cf9cf5']];
+const routes=[[0,1,'#53e2a6'],[1,2,'#79afff'],[1,0,'#f6bf74'],[2,3,'#cf9cf5'],[1,3,'#cf9cf5'],[4,5,'#6ce4ed'],[5,0,'#f18eab']];
 const faces=[[0,1,2,3],[4,7,6,5],[0,4,5,1],[3,2,6,7],[0,3,7,4],[1,5,6,2]];
 function tint(hex,k){
  const v=parseInt(hex.slice(1),16);
@@ -51,7 +61,7 @@ function draw(){
  }
  routes.forEach(([a,b,color],i)=>{
   const points=wire(a,b).map(([x,z])=>project(x,.035,z));
-  ctx.setLineDash(i===2?[5,5]:i>=3?[2,5]:[]);
+  ctx.setLineDash(i===2?[5,5]:i===3||i===4?[2,5]:[]);
   path(points,null,packet?.route===i?color:color+'83',packet?.route===i?3:1.6);
   ctx.setLineDash([]);
   const a1=points[1],b1=points[2],mx=(a1.x+b1.x)/2,my=(a1.y+b1.y)/2,theta=Math.atan2(b1.y-a1.y,b1.x-a1.x);
@@ -144,11 +154,11 @@ function draw(){
   avatar(x,z,color,i);
  });
  polygons.sort((a,b)=>a.depth-b.depth).forEach(p=>path(p.points,p.color,p.surface?p.color:undefined,.45));
- hits=agents.map(([name,,color,x,z],i)=>{
+ hits=agents.map(([,,color,x,z],i)=>{
   const anchor=project(x,2.1,z+.25),center=project(x,.9,z);
-  ctx.font='600 12px system-ui';const width=ctx.measureText(name).width+29;
+  ctx.font='600 12px system-ui';const label=slots[i];const width=ctx.measureText(label).width+20;
   ctx.fillStyle='#111d31';ctx.beginPath();ctx.roundRect(anchor.x-width/2,anchor.y-14,width,25,6);ctx.fill();
-  ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,anchor.x,anchor.y-1);
+  ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,anchor.x,anchor.y-1);
   return {anchor,center,i,width};
  });
 }
@@ -171,14 +181,17 @@ const status=by('office-status'),button=by('office-run'),scenario=by('office-sce
 const workflow=window.officeWorkflow;
 const pending=workflow.pending();
 if(pending){
- scenario.value=pending.scenario;scenario.disabled=true;
+ scenario.value=pending.scenario;scenario.disabled=true;squad.value=pending.squad;squad.disabled=true;
  button.textContent='▶ Tiếp tục mô phỏng';status.textContent='Đã tải checkpoint.';
 }
 button.onclick=()=>{
  if(run){cancelAnimationFrame(frame);run=null;packet=null;workflow.pause();button.textContent='▶ Tiếp tục mô phỏng';status.textContent='Đã tạm dừng tại checkpoint.';draw();return;}
  const reject=scenario.value==='reject';
- const steps=reject?[[0,'Maker gửi thay đổi lần 1'],[2,'Reviewer reject lần 1'],[0,'Maker gửi thay đổi lần 2'],[2,'Reviewer reject lần 2'],[0,'Maker gửi thay đổi lần 3'],[4,'Reviewer reject lần 3 · Auditor đọc sự kiện']]:[[0,'Maker gửi thay đổi để duyệt'],[1,'Reviewer approve và chuyển sang Merger'],[3,'Merger hoàn tất · Auditor đọc sự kiện']];
- run={steps,index:workflow.begin(scenario.value),start:null};button.textContent='■ Dừng mô phỏng';scenario.disabled=true;
+ const [producer,reviewer,delivery,auditor,intake,specialist]=profiles[squad.value][2];
+ const steps=[[5,intake+' chuyển yêu cầu'],[6,specialist+' chuẩn bị đầu vào'],...(reject?
+ [[0,producer+' gửi bản nháp lần 1'],[2,reviewer+' trả lại lần 1'],[0,producer+' gửi bản nháp lần 2'],[2,reviewer+' trả lại lần 2'],[0,producer+' gửi bản nháp lần 3'],[4,auditor+' ghi nhận lần trả lại thứ ba']]:
+ [[0,producer+' gửi bản nháp'],[1,reviewer+' duyệt và chuyển bàn giao'],[3,delivery+' hoàn tất · '+auditor+' ghi nhận']])];
+ run={steps,index:workflow.begin(scenario.value,squad.value),start:null};button.textContent='■ Tạm dừng';scenario.disabled=true;squad.disabled=true;
  function animate(now){
   if(!run)return;
   if(run.start===null){run.start=now;status.textContent=steps[run.index][1];}
@@ -186,11 +199,11 @@ button.onclick=()=>{
   const t=Math.min(1,(now-run.start)/duration);
   packet={route:steps[run.index][0],t:duration===650?1:t};draw();
   if(t===1){workflow.advance();run.index++;run.start=null;
-   if(run.index===steps.length){run=null;packet=null;button.textContent='▶ Chạy mô phỏng';scenario.disabled=false;status.textContent=reject?'Chờ người xử lý sau 3 lần reject.':'Đã mô phỏng xong luồng approve → merge → ghi nhận sự kiện.';draw();return;}
+   if(run.index===steps.length){run=null;packet=null;button.textContent='▶ Chạy mô phỏng';scenario.disabled=false;squad.disabled=false;status.textContent=reject?'Chờ người xử lý sau 3 lần reject.':'Đã bàn giao và ghi nhận sự kiện.';draw();return;}
   }
   frame=requestAnimationFrame(animate);
  }
  frame=requestAnimationFrame(animate);
 };
-select(0);
+loadSquad();
 })();
