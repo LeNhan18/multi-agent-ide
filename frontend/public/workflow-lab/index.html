@@ -11,9 +11,9 @@
 .office-stage canvas{display:block;width:100%;height:clamp(300px,44vw,480px);touch-action:none;cursor:grab}.office-stage canvas:active{cursor:grabbing}
 .office-hint{position:absolute;bottom:10px;left:10px;right:10px;text-align:center;color:#b9c9e2;font-size:12px;pointer-events:none}
 #office aside{padding:16px;border-left:1px solid #253650}#office aside p{color:#c2d1e7}#office aside label{display:grid;gap:6px;font-size:13px}
-.office-picks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.office-picks button{padding:6px;font-size:13px;border-left:3px solid var(--agent)!important}.office-picks button[aria-pressed=true]{background:var(--agent)!important;color:#152339!important}
+.office-picks{display:grid;grid-template-columns:1fr 1fr;gap:7px}.office-picks button{padding:6px;overflow-wrap:anywhere;font-size:13px;border-left:3px solid var(--agent)!important}.office-picks button[aria-pressed=true]{background:var(--agent)!important;color:#152339!important}
 #office-status{margin-bottom:0;padding-top:10px;border-top:1px solid #344461;font-size:13px;min-height:57px}
-@media(max-width:700px){.office-layout{grid-template-columns:1fr}#office aside{border-left:0;border-top:1px solid #253650}.office-picks{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.office-layout{grid-template-columns:1fr}#office aside{border-left:0;border-top:1px solid #253650}.office-picks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 #workflow{margin:0 0 24px;background:#eaf0f8;border:1px solid #cedaeb;border-radius:16px;padding:16px;color:#172840}
 #workflow header{background:transparent;color:inherit}#workflow header h2{margin:5px 0}#workflow p{line-height:1.55}
@@ -151,4 +151,4 @@ $('file').onchange=async()=>{
  catch{$('notice').textContent='Tệp JSON không hợp lệ. Hãy chọn bản xuất từ AI Office.';}
 };
 render();
-</script><script src="./workflow.js" defer></script><script src="./office.js?v=4" defer></script></html>
+</script><script src="./squads.js" defer></script><script src="./workflow.js?v=2" defer></script><script src="./office.js?v=5" defer></script></html>

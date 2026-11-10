@@ -21,4 +21,6 @@ Serve the standalone browser demo from the repository root:
 python -m http.server 8080 --bind 127.0.0.1 --directory frontend/public
 ```
 
-Open <http://127.0.0.1:8080/workflow-lab/>. The lab simulates the engineering squad, including its message channels, status board, journal, and local checkpoint. The displayed API contract is a proposal. The demo uses browser storage and does not call the runtime or GitHub.
+Open <http://127.0.0.1:8080/workflow-lab/>. The lab simulates six-agent teams across multiple industries, including its message channels, status board, journal, and local checkpoint. The displayed API contract is a proposal. The demo uses browser storage and does not call the runtime or GitHub.
+
+Add an industry in `frontend/public/workflow-lab/squads.js` with a label, a sample deliverable, and six role names in workflow-slot order. Demo checkpoints are scoped to the current protocol version.
