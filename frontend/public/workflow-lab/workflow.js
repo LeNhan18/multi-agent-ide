@@ -38,7 +38,7 @@ panel.innerHTML=`<header><div class="eyebrow">AI Office · Workflow Lab</div><h2
 </div>
 <div class="wf-grid wf-bottom">
 <section><h3>Journal</h3><p>Chuỗi sự kiện của phiên hiện tại được bổ sung theo thứ tự.</p><div id="wf-journal"></div></section>
-<section><h3>API Contract</h3><p>Hợp đồng đề xuất cho backend. Bản mô phỏng chạy trong trình duyệt.</p><ul><li><code>POST /v1/runs</code> tạo phiên</li><li><code>GET /v1/runs/{id}</code> đọc Board và Status</li><li><code>GET /v1/runs/{id}/events?after=0</code> đọc Journal theo số thứ tự</li><li><code>POST /v1/runs/{id}/commands</code> nhận lệnh điều phối</li></ul><details open><summary>Message envelope</summary><pre id="wf-envelope"></pre></details></section>
+<section><details><summary>API Contract</summary><p>Hợp đồng đề xuất cho backend. Bản mô phỏng chạy trong trình duyệt.</p><ul><li><code>POST /v1/runs</code> tạo phiên</li><li><code>GET /v1/runs/{id}</code> đọc Board và Status</li><li><code>GET /v1/runs/{id}/events?after=0</code> đọc Journal theo số thứ tự</li><li><code>POST /v1/runs/{id}/commands</code> nhận lệnh điều phối</li></ul></details><details id="wf-envelope-panel" hidden><summary>Thông điệp đã chọn</summary><pre id="wf-envelope"></pre></details></section>
 </div>`;
 const by=id=>document.getElementById(id);
 const channels={tasks:'Giao việc và retry',review:'Yêu cầu duyệt và phản hồi',delivery:'Duyệt và bàn giao',audit:'Kết quả và bàn giao cho người'};
@@ -53,11 +53,16 @@ function render(){
  const list=by('wf-journal');list.replaceChildren();
  if(!model.journal.length)list.textContent='Chưa có sự kiện.';
  for(const e of model.journal){
-  const row=document.createElement('button');row.type='button';row.textContent='#'+e.seq+' '+e.type+' · '+e.from+' → '+e.to;row.onclick=()=>show(e);list.append(row);
+  const row=document.createElement('button');row.type='button';row.textContent='#'+e.seq+' '+e.type+' · '+e.from+' → '+e.to;row.onclick=()=>show(e,true);list.append(row);
  }
  show(model.journal.at(-1));
 }
-function show(e){by('wf-envelope').textContent=JSON.stringify(e??{protocol:PROTOCOL,run_id:'<id>',seq:1,squad:'general',type:'task.scoped',channel:'tasks',from:'Tiếp nhận yêu cầu',to:'Phân tích nghiệp vụ',status:'SCOPING',payload:{rejects:0},at:'<UTC ISO 8601>'},null,2);}
+function show(e,open=false){
+ const panel=by('wf-envelope-panel');
+ panel.hidden=!e;
+ if(open)panel.open=true;
+ by('wf-envelope').textContent=e?JSON.stringify(e,null,2):'';
+}
 function persist(){
  try{localStorage.setItem(key,JSON.stringify(model));persistence='';}
  catch{persistence='Không ghi được checkpoint vào trình duyệt.';}
@@ -65,11 +70,14 @@ function persist(){
 }
 function event(type){
  const [from,status,sender,to,channel]=rules[type];
+ if(!window.officePolicies[model.squad][sender].events.includes(type))throw Error('Vai trò không có quyền phát sự kiện: '+type);
  if(model.state!==from||(type==='human.required'&&model.rejects!==3)||(type==='work.retried'&&model.rejects>=3))throw Error('Chuyển trạng thái không hợp lệ: '+type);
  if(type==='review.rejected')model.rejects++;
  model.state=status;
  const [,artifact,roles]=profiles[model.squad];
  model.journal.push({protocol:PROTOCOL,run_id:model.id,squad:model.squad,seq:model.journal.length+1,type,channel,from:roles[sender],to:roles[to],status,payload:{artifact,rejects:model.rejects},at:new Date().toISOString()});
+ const entry=model.journal.at(-1);
+ for(const role of new Set([sender,to]))window.officeTerminal?.append({squad:model.squad,role},'simulation',JSON.stringify(entry,null,2),model.id);
 }
 window.officeWorkflow={
  pending:()=>mode==='paused'?{scenario:model.scenario,step:model.step,squad:model.squad}:null,

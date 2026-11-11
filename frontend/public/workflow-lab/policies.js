@@ -1,0 +1,26 @@
+(() => {
+'use strict';
+const baseline=[
+ {skills:'Soạn bản nháp · Gắn nguồn và đánh dấu giả định',scope:'Đọc đầu vào đã giao, ghi vào vùng bản nháp riêng.',limit:'Không tự duyệt hoặc ghi đè bản đã bàn giao.',output:'Bản nháp có phiên bản, nguồn và các mục còn thiếu.',events:['review.requested']},
+ {skills:'Đối chiếu tiêu chí · Ghi lỗi và yêu cầu sửa',scope:'Đọc bản nháp và nguồn, ghi quyết định duyệt hoặc trả lại.',limit:'Không sửa bản nháp thay người thực hiện. Sau 3 lần trả lại, chuyển người phụ trách.',output:'Quyết định có lý do và dẫn chứng theo tiêu chí.',events:['review.approved','review.rejected','human.required']},
+ {skills:'Đóng gói đầu ra · Kiểm tra phiên bản được duyệt',scope:'Chuẩn bị và ghi nhận bàn giao nội bộ đúng phiên bản đã duyệt.',limit:'Không tự gửi ra ngoài hoặc thực hiện cam kết. Tác vụ đối ngoại cần người có thẩm quyền phê duyệt.',output:'Gói bàn giao kèm mã phiên bản và đối tượng nhận.',events:['delivery.completed']},
+ {skills:'Đọc nhật ký · Đối chiếu trình tự và bằng chứng',scope:'Chỉ đọc nhật ký và bằng chứng. Có thể ghi phát hiện vào báo cáo riêng.',limit:'Không sửa hoặc xóa sự kiện, không tự đổi trạng thái phiên.',output:'Báo cáo sai lệch gắn mã sự kiện.',events:[]},
+ {skills:'Làm rõ yêu cầu · Chốt phạm vi và tiêu chí',scope:'Tạo phiếu công việc và giao nhiệm vụ trong phạm vi được cấp.',limit:'Không mở rộng quyền, tự duyệt đầu ra hoặc tiếp tục khi yêu cầu bắt buộc còn thiếu.',output:'Phiếu yêu cầu có phạm vi, đầu vào và tiêu chí nghiệm thu.',events:['task.scoped','work.started','work.retried','delivery.started']},
+ {skills:'Kiểm tra chất lượng đầu vào · Tổng hợp bằng chứng',scope:'Đọc nguồn đã được cấp quyền, chuyển bằng chứng cho người thực hiện.',limit:'Không tự đổi nguồn gốc dữ liệu hoặc điền số liệu chưa xác minh.',output:'Gói đầu vào có nguồn, ngày và khoảng trống dữ liệu.',events:['inputs.prepared']}
+];
+const industry={
+ general:{skills:['Lập báo cáo và kế hoạch hành động','Kiểm tra chỉ số và người chịu trách nhiệm','Lập danh sách việc bàn giao','Đối chiếu mốc và nhật ký','Xác định mục tiêu và thời hạn','Phân tích quy trình và điểm nghẽn'],limit:'Mọi thay đổi quy trình chính thức cần chủ quy trình duyệt.'},
+ engineering:{skills:['Chỉnh mã trong nhánh được giao','Review diff và đối chiếu kết quả test','Đóng gói bản vá đã duyệt','Truy vết commit và kết quả CI','Viết tiêu chí nghiệm thu','Phân tích phụ thuộc và phạm vi thay đổi'],limit:'Không dùng bí mật ngoài phạm vi, bỏ qua kiểm tra bắt buộc hoặc tự triển khai production.'},
+ research:{skills:['Viết tổng quan có trích dẫn','Phản biện phương pháp và kết luận','Biên tập báo cáo và danh mục nguồn','Kiểm tra trích dẫn gốc','Chốt câu hỏi và phạm vi nghiên cứu','Tìm tài liệu và trích xuất bằng chứng'],limit:'Không tạo nguồn hoặc số liệu giả. Phân biệt kết quả nghiên cứu với suy luận.'},
+ finance:{skills:['Đối soát số liệu và lập bảng chênh lệch','Kiểm tra chứng từ và phép tính','Tổng hợp hồ sơ đã duyệt','Truy vết chứng từ và số liệu','Kiểm tra kỳ kế toán và danh mục chứng từ','Phân loại giao dịch và rà soát trùng'],limit:'Không thanh toán, hạch toán chính thức hoặc sửa chứng từ gốc.'},
+ legal:{skills:['Soạn bản ghi nhớ và đánh dấu điều khoản','Đối chiếu điều khoản với nguồn được giao','Bàn giao hồ sơ theo phiên bản','Truy vết thay đổi điều khoản','Xác định phạm vi và bộ hồ sơ','Tra cứu và trích điều khoản liên quan'],limit:'Ý kiến pháp lý chính thức và cam kết với bên ngoài cần người có thẩm quyền duyệt.'},
+ healthcare:{skills:['Lập báo cáo luồng tiếp nhận','Kiểm tra chỉ số vận hành và chất lượng dữ liệu','Đóng gói báo cáo nội bộ','Rà soát dấu vết truy cập','Xác định khoa phòng và câu hỏi vận hành','Phân tích thời gian chờ từ dữ liệu mẫu'],limit:'Dùng dữ liệu giả lập hoặc đã khử định danh. Không chẩn đoán hay quyết định điều trị.'},
+ marketing:{skills:['Viết nội dung theo brief','Duyệt giọng thương hiệu và tuyên bố','Đóng gói nội dung theo từng kênh','Đối chiếu bản quyền và nguồn','Thu thập brief và tiêu chí thương hiệu','Tổng hợp thông tin nhóm khán giả'],limit:'Không tự đăng nội dung, mua quảng cáo hoặc sử dụng tài sản thiếu quyền.'},
+ logistics:{skills:['Lập kế hoạch điều phối đơn hàng','Kiểm tra tải và thời hạn','Chuẩn bị phiếu bàn giao kế hoạch','Truy vết thay đổi đơn hàng','Xác nhận đơn và yêu cầu giao nhận','Đối chiếu năng lực kho và vận chuyển'],limit:'Không đặt lệnh vận chuyển hoặc thay đổi tồn kho thực tế.'},
+ service:{skills:['Soạn phương án và bản nháp phản hồi','Kiểm tra chính sách và SLA','Chuẩn bị bản phản hồi đã duyệt','Truy vết hồ sơ và lý do xử lý','Phân loại yêu cầu và mức độ ưu tiên','Đọc lịch sử trao đổi được phép'],limit:'Không tự gửi phản hồi, hoàn tiền hoặc cam kết ngoại lệ với khách hàng.'},
+ construction:{skills:['Lập bảng BOQ và so sánh báo giá','Rà mã hàng, công suất, CRI, IP và sai lệch','Đóng gói đề xuất và danh sách ngoại lệ','Truy vết catalogue, báo giá và phiên bản','Chốt hạng mục BOQ và yêu cầu kỹ thuật','Đối chiếu vật tư, đơn vị và dữ liệu catalogue'],limit:'Không tự thay mã, xác nhận tương đương hay phát hành báo giá khi sai lệch chưa được duyệt.'}
+};
+window.officePolicies=Object.fromEntries(Object.entries(industry).map(([id,config])=>[
+ id,baseline.map((role,i)=>({...role,specialty:config.skills[i],industryLimit:config.limit}))
+]));
+})();
