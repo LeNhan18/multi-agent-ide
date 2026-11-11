@@ -76,6 +76,8 @@ function event(type){
  model.state=status;
  const [,artifact,roles]=profiles[model.squad];
  model.journal.push({protocol:PROTOCOL,run_id:model.id,squad:model.squad,seq:model.journal.length+1,type,channel,from:roles[sender],to:roles[to],status,payload:{artifact,rejects:model.rejects},at:new Date().toISOString()});
+ const entry=model.journal.at(-1);
+ for(const role of new Set([sender,to]))window.officeTerminal?.append({squad:model.squad,role},'simulation',JSON.stringify(entry,null,2),model.id);
 }
 window.officeWorkflow={
  pending:()=>mode==='paused'?{scenario:model.scenario,step:model.step,squad:model.squad}:null,

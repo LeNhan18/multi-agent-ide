@@ -6,7 +6,7 @@ const positions=[
 ];
 let agents=[];
 const host=document.getElementById('office');
-host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D sáu agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Theo dõi kiện hàng giữa các trạm</div></div><aside><label>Đội theo ngành <select id="office-squad"></select></label><p id="office-artifact"></p><div class="office-picks"></div><h3 id="office-agent"></h3><details class="office-policy" open><summary>Kỹ năng và ràng buộc</summary><dl id="office-policy"></dl></details><label>Kịch bản <select id="office-scenario"><option value="approve">Duyệt → Bàn giao</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
+host.innerHTML='<div class="office-head"><div><div class="eyebrow">Mô phỏng tương tác · AI Office</div><h2>Văn phòng agent 3D</h2></div><div class="office-actions"><button id="office-run">▶ Chạy mô phỏng</button><button id="office-reset">Đặt lại góc nhìn</button></div></div><div class="office-layout"><div class="office-stage"><canvas aria-label="Mô hình 3D sáu agent cùng các máy tính được kết nối"></canvas><div class="office-hint">Kéo để xoay · Cuộn để thu phóng · Theo dõi kiện hàng giữa các trạm</div></div><aside><label>Đội theo ngành <select id="office-squad"></select></label><p id="office-artifact"></p><div class="office-picks"></div><h3 id="office-agent"></h3><details class="office-policy" id="agent-model-panel"><summary>Model &amp; kết nối</summary><div id="agent-model-config"></div></details><details class="office-policy" open><summary>Kỹ năng và ràng buộc</summary><dl id="office-policy"></dl></details><label>Kịch bản <select id="office-scenario"><option value="approve">Duyệt → Bàn giao</option><option value="reject">3 lần reject → Chờ người</option></select></label><p id="office-status" role="status">Sẵn sàng chạy mô phỏng.</p></aside></div>';
 const canvas=host.querySelector('canvas'),ctx=canvas.getContext('2d');
 const by=id=>document.getElementById(id);
 let angle=-.56, pitch=.59, zoom=1, selected=0, drag=null, hits=[], run=null, frame=0, packet=null;
@@ -26,6 +26,8 @@ function loadSquad(){
 squad.onchange=loadSquad;
 function select(i){
  selected=i;
+ window.officeActiveAgent={squad:squad.value,role:i,name:agents[i][0]};
+ document.dispatchEvent(new Event('office-agent-changed'));
  [...picks.children].forEach((b,j)=>b.setAttribute('aria-pressed',i===j));
  by('office-agent').textContent=agents[i][0]+' · '+agents[i][1];
  const {specialty,skills,scope,limit,industryLimit,output}=window.officePolicies[squad.value][i];
