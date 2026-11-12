@@ -13,6 +13,14 @@ uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 pytest
 ```
 
+## Run on Windows
+
+Install Python 3.11+ and Node.js 22+, then double-click `run.bat` in the repository root or run it from a terminal. The first run creates `.venv` and installs Python dependencies. Later runs reuse the environment and reinstall if `pyproject.toml` changes.
+
+The launcher starts FastAPI at port 8000 and Workflow Lab at port 8080, then opens <http://127.0.0.1:8080/workflow-lab/>. Press Ctrl+C to stop both servers. For port conflicts, set `AI_OFFICE_BACKEND_PORT` or `WORKFLOW_LAB_PORT` before running.
+
+With no custom MCP configuration, select the first agent in **Vận hành chung** and open **Công cụ** to use Word in `.ai-office/word`. Put DOCX files in that folder and use **Tải công cụ**. The launcher keeps the workspace and backend log under `.ai-office/`. AI planning, Notion and Outlook use the server credentials described below.
+
 ## AI Office Workflow Lab
 
 Start the loopback-only demo server with Node.js 22 or later:

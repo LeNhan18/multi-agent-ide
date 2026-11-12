@@ -8,3 +8,4 @@ node_modules/
 dist/
 .agent-worktrees/
 *.sqlite
+.ai-office/

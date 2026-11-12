@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,6 +41,31 @@ class OfficeMcpTests(unittest.IsolatedAsyncioTestCase):
         res = await self.rpc("tools/call", {"name": "word_create_draft", "arguments": {"title": "t", "text": "x"}})
         self.assertIn("confirmation", res.json()["error"]["message"])
         self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
+
+    async def test_invalid_header_and_json_do_not_raise_server_errors(self):
+        response = await self.client.post(
+            "/mcp/word", headers=[(b"authorization", b"Bearer \xff")], content=b"{}",
+        )
+        self.assertEqual(response.status_code, 401)
+        invalid_json = b'{"jsonrpc":"2.0","id":NaN,"method":"initialize"}'
+        response = await self.client.post("/mcp/word", headers=self.headers, content=invalid_json)
+        self.assertEqual(response.status_code, 400)
+        response = await self.client.post(
+            "/mcp/word", headers=self.headers,
+            json={"jsonrpc": "2.0", "id": [], "method": "initialize"},
+        )
+        self.assertEqual(response.json()["error"]["code"], -32600)
+        self.assertIsNone(response.json()["id"])
+
+    async def test_corrupt_docx_returns_tool_error(self):
+        malformed = Path(self.tmp.name) / "invalid.docx"
+        with zipfile.ZipFile(malformed, "w") as archive:
+            archive.writestr("unrelated.txt", "Not a Word document")
+        response = await self.rpc(
+            "tools/call", {"name": "word_read", "arguments": {"path": malformed.name}},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["result"]["isError"])
 
     async def test_word_roundtrip_and_isolation(self):
         args = {"title": "Báo cáo AI Office", "text": "Nội dung kiểm chứng"}
