@@ -29,7 +29,7 @@ createServer(async (incoming, outgoing) => {
       let length = 0;
       for await (const chunk of incoming) {
         length += chunk.length;
-        if (length > 8192) {
+        if (length > 16384) {
           outgoing.writeHead(413).end();
           return;
         }

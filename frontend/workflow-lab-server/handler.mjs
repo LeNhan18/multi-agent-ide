@@ -1,3 +1,4 @@
+import { mcpRoute } from './mcp.mjs';
 import { assets, officeConfig } from './assets.mjs';
 
 const json = (status, code = 200) => Response.json({ status }, {
@@ -162,6 +163,7 @@ async function taskPlan(request, env, url) {
 export default {
   fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/mcp/')) return mcpRoute(request, env, officeConfig);
     if (url.pathname === '/api/ai/catalog') return modelCatalog(request, env, url);
     if (url.pathname === '/api/ai/task-plan' || url.pathname === '/api/openai/task-plan') return taskPlan(request, env, url);
     if (url.pathname === '/api/openai/connection') return connection(request, env, url);
