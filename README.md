@@ -46,7 +46,7 @@ Provider adapters are verified with mocked responses. Live provider calls and vi
 
 ### MCP tools for Word, Notion and Outlook
 
-The Workflow Lab and hosted Site use the same Streamable HTTP MCP gateway. The selected agent determines the tools listed and allowed by the gateway. Calls start from **Công cụ của …** and require confirmation of the exact arguments. The terminal keeps the call and result in the current tab. The planner and six-agent simulation do not invoke MCP tools automatically.
+The Workflow Lab and hosted Site use the same Streamable HTTP MCP gateway. The selected agent determines the tools listed and allowed by the gateway. Calls start from the **Công cụ** tab under **Công cụ & nhật ký** and require confirmation of the exact arguments. The terminal keeps the call and result in the current tab. The planner and six-agent simulation do not invoke MCP tools automatically.
 
 The FastAPI server exposes three MCP endpoints when `MCP_BRIDGE_TOKEN` is set to a strong secret of at least 32 characters:
 
@@ -80,7 +80,7 @@ Set `MCP_SERVERS_JSON` in the Node server environment or the hosted Site's **Env
 
 Set `MCP_OFFICE_TOKEN` as a server secret equal to the bridge token. Keep provider credentials in FastAPI's environment. Agent keys use `squad_id:role_index` (0–5). Grant individual tool names and classify each tool as `read` or `write`. Unknown tools are denied. A trusted external Streamable HTTP server can be configured using its endpoint and the same grants format. The client handles JSON and SSE responses and MCP session cleanup. It does not launch stdio processes.
 
-For a local bridge, set `MCP_ALLOW_LOOPBACK=true` in the Node server process and use `http://127.0.0.1:8000/mcp/word`. The hosted Site needs a reachable HTTPS endpoint with valid TLS. When publishing the bridge behind a reverse proxy, route only the MCP paths needed by the Site. After configuring, select the agent, choose a connection, then click **Kiểm tra & tải công cụ**. Listing tools verifies the MCP bridge. Running a provider tool verifies the actual account connection.
+For a local bridge, set `MCP_ALLOW_LOOPBACK=true` in the Node server process and use `http://127.0.0.1:8000/mcp/word`. The hosted Site needs a reachable HTTPS endpoint with valid TLS. When publishing the bridge behind a reverse proxy, route only the MCP paths needed by the Site. After configuring, select the agent, choose a connection, then click **Tải công cụ**. Listing tools verifies the MCP bridge. Running a provider tool verifies the actual account connection.
 
 ```bash
 python -m unittest discover -s tests -p test_mcp_office.py
