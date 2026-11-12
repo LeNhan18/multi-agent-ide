@@ -3,10 +3,11 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 import { assets, officeConfig } from '../assets.mjs';
-const source = 'const assets = '+JSON.stringify(assets)+'; const officeConfig = '+JSON.stringify(officeConfig)+';\n'+(await readFile(new URL('../handler.mjs', import.meta.url),'utf8')).replace("import { assets, officeConfig } from './assets.mjs';",'');
+import {mcpRoute} from '../mcp.mjs';
+const source = 'const assets = '+JSON.stringify(assets)+'; const officeConfig = '+JSON.stringify(officeConfig)+';\n'+(await readFile(new URL('../handler.mjs', import.meta.url),'utf8')).replace("import { assets, officeConfig } from './assets.mjs';",'').replace("import { mcpRoute } from './mcp.mjs';",'');
 let calls=[];let status=200;
 const plan={title:'Đối chiếu BOQ',criteria:'Đối chiếu mã hàng',risk:'Thiếu bản vẽ',next:'Thu thập tài liệu',priority:'Vừa',hours:2};
-const context={Response,Request,URL,AbortSignal,crypto:webcrypto,fetch:async(url,options)=>{
+const context={mcpRoute,Response,Request,URL,AbortSignal,crypto:webcrypto,fetch:async(url,options)=>{
  calls.push({url,options,body:JSON.parse(options.body)});
  if(status!==200)return Response.json({}, {status});
  const raw=JSON.stringify(plan);

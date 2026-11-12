@@ -43,3 +43,49 @@ node frontend/workflow-lab-server/tests/terminal.mjs
 ```
 
 Provider adapters are verified with mocked responses. Live provider calls and visual browser QA are not covered by these tests. On local runs, configure the process environment; the Site-specific environment-variable instructions in the shared UI apply only to hosted Sites.
+
+### MCP tools for Word, Notion and Outlook
+
+The Workflow Lab and hosted Site use the same Streamable HTTP MCP gateway. The selected agent determines the tools listed and allowed by the gateway. Calls start from the **Công cụ** tab under **Công cụ & nhật ký** and require confirmation of the exact arguments. The terminal keeps the call and result in the current tab. The planner and six-agent simulation do not invoke MCP tools automatically.
+
+The FastAPI server exposes three MCP endpoints when `MCP_BRIDGE_TOKEN` is set to a strong secret of at least 32 characters:
+
+| Endpoint | Tools | Backend environment |
+| --- | --- | --- |
+| `/mcp/word` | `word_list`, `word_read`, `word_create_draft` | `MCP_WORD_WORKSPACE` points to an existing directory. New DOCX drafts go in `.agent-drafts/`. |
+| `/mcp/notion` | `notion_search`, `notion_read`, `notion_append` | `NOTION_API_KEY` belongs to an integration with access to the target pages. Appending requires write access. |
+| `/mcp/outlook` | `outlook_list`, `outlook_create_draft` | `OUTLOOK_ACCESS_TOKEN` is a valid delegated Microsoft Graph token. Use `Mail.ReadBasic` to list metadata or `Mail.ReadWrite` to create drafts. |
+
+Install backend dependencies and start FastAPI as shown above. Give the server a dedicated Word workspace. It reads DOCX text and tables and writes only new drafts. Outlook only creates drafts. OAuth sign-in and token refresh are managed outside AI Office in this version.
+
+Set `MCP_SERVERS_JSON` in the Node server environment or the hosted Site's **Environment variables**. The Site panel generates a read-only example for the selected agent. The example below gives the first agent in **Vận hành chung** permission to list, read and create Word drafts:
+
+```json
+[
+  {
+    "id": "word",
+    "name": "Word / DOCX",
+    "url": "https://office-backend.example.com/mcp/word",
+    "tokenEnv": "MCP_OFFICE_TOKEN",
+    "grants": {
+      "general:0": {
+        "word_list": "read",
+        "word_read": "read",
+        "word_create_draft": "write"
+      }
+    }
+  }
+]
+```
+
+Set `MCP_OFFICE_TOKEN` as a server secret equal to the bridge token. Keep provider credentials in FastAPI's environment. Agent keys use `squad_id:role_index` (0–5). Grant individual tool names and classify each tool as `read` or `write`. Unknown tools are denied. A trusted external Streamable HTTP server can be configured using its endpoint and the same grants format. The client handles JSON and SSE responses and MCP session cleanup. It does not launch stdio processes.
+
+For a local bridge, set `MCP_ALLOW_LOOPBACK=true` in the Node server process and use `http://127.0.0.1:8000/mcp/word`. The hosted Site needs a reachable HTTPS endpoint with valid TLS. When publishing the bridge behind a reverse proxy, route only the MCP paths needed by the Site. After configuring, select the agent, choose a connection, then click **Tải công cụ**. Listing tools verifies the MCP bridge. Running a provider tool verifies the actual account connection.
+
+```bash
+python -m unittest discover -s tests -p test_mcp_office.py
+node frontend/workflow-lab-server/tests/mcp.mjs
+node frontend/workflow-lab-server/tests/mcp-e2e.mjs
+```
+
+The end-to-end check starts a local FastAPI bridge, then creates and reads a real DOCX through the JavaScript gateway. Notion and Graph API tests use mocked responses.
