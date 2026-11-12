@@ -17,8 +17,10 @@ from pathlib import Path
 
 import httpx
 from docx import Document
+from docx.opc.exceptions import PackageNotFoundError
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from lxml.etree import LxmlError
 
 router = APIRouter(prefix="/mcp", tags=["MCP Office"])
 PROTOCOL = "2025-06-18"
@@ -75,13 +77,17 @@ def word_call(name: str, args: dict) -> dict:
         path = (root / args["path"]).resolve(strict=True)
         if not path.is_relative_to(root) or path.suffix.lower() != ".docx" or not path.is_file():
             raise ValueError("Đường dẫn phải là DOCX trong workspace")
-        if path.stat().st_size > 10_000_000:
+        with path.open("rb") as source:
+            data = source.read(10_000_001)
+        if len(data) > 10_000_000:
             raise ValueError("DOCX quá lớn (giới hạn 10 MB)")
-        data = path.read_bytes()
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            if sum(i.file_size for i in archive.infolist()) > 20_000_000:
-                raise ValueError("DOCX giải nén vượt giới hạn")
-        doc = Document(io.BytesIO(data))
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                if sum(i.file_size for i in archive.infolist()) > 20_000_000:
+                    raise ValueError("DOCX giải nén vượt giới hạn")
+            doc = Document(io.BytesIO(data))
+        except (KeyError, LxmlError, PackageNotFoundError, zipfile.BadZipFile) as error:
+            raise ValueError("DOCX không hợp lệ") from error
         text = "\n".join([p.text for p in doc.paragraphs] + [" | ".join(c.text for c in row.cells) for t in doc.tables for row in t.rows])
         return {"path": str(path.relative_to(root)), "text": text[:100000], "truncated": len(text) > 100000}
     draft_dir = root / ".agent-drafts"
@@ -146,6 +152,10 @@ async def provider_call(service: str, name: str, args: dict) -> dict:
             return json.loads(bytes(data).decode().replace(token, "[REDACTED]"))
 
 
+def reject_json_constant(value: str) -> None:
+    raise ValueError(f"Invalid JSON constant: {value}")
+
+
 @router.post("/{service}")
 async def mcp(service: str, request: Request) -> Response:
     if service not in TOOLS:
@@ -153,7 +163,8 @@ async def mcp(service: str, request: Request) -> Response:
     expected = os.environ.get("MCP_BRIDGE_TOKEN", "")
     if len(expected) < 32:
         raise HTTPException(503, "MCP bridge chưa được cấu hình")
-    if not secrets.compare_digest(request.headers.get("authorization", ""), "Bearer " + expected):
+    authorization = request.headers.get("authorization", "")
+    if not secrets.compare_digest(authorization.encode("utf-8"), ("Bearer " + expected).encode("utf-8")):
         raise HTTPException(401, headers={"WWW-Authenticate": "Bearer"})
     origin = request.headers.get("origin")
     allowed = os.environ.get("MCP_ALLOWED_ORIGINS", "").split(",")
@@ -165,8 +176,8 @@ async def mcp(service: str, request: Request) -> Response:
         if len(data) > 16000:
             raise HTTPException(413)
     try:
-        body = json.loads(data)
-    except (ValueError, UnicodeDecodeError):
+        body = json.loads(data, parse_constant=reject_json_constant)
+    except (ValueError, RecursionError):
         raise HTTPException(400, "JSON không hợp lệ")
     if not isinstance(body, dict) or body.get("jsonrpc") != "2.0":
         raise HTTPException(400)
@@ -177,8 +188,15 @@ async def mcp(service: str, request: Request) -> Response:
         return JSONResponse({"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}, headers={"Cache-Control": "no-store"})
     if method == "notifications/initialized" and request_id is None:
         return Response(status_code=202)
-    if request_id is None:
-        return error(-32600, "Request id required")
+    if type(request_id) not in (int, str):
+        request_id = None
+        return error(-32600, "Request id must be a string or integer")
+    if isinstance(request_id, str):
+        try:
+            request_id.encode("utf-8")
+        except UnicodeEncodeError:
+            request_id = None
+            return error(-32600, "Request id is not valid Unicode")
     if method == "initialize":
         return result({"protocolVersion": PROTOCOL, "capabilities": {"tools": {}}, "serverInfo": {"name": "ai-office-" + service, "version": "1.0.0"}})
     if request.headers.get("mcp-protocol-version") not in (PROTOCOL, "2025-11-25"):
