@@ -6,16 +6,20 @@ const buttons = [...navigation.querySelectorAll('[data-ide]')];
 function showPane(name) {
  for (const pane of panes) pane.hidden = pane.dataset.pane !== name;
  for (const button of buttons) button.setAttribute('aria-pressed', button.dataset.ide === name);
+ if (name === 'settings' || name === 'office') document.getElementById('ide-advanced').open = true;
 }
 for (const button of buttons) button.onclick = () => showPane(button.dataset.ide);
 
 const editor = document.getElementById('ide-editor');
 editor.innerHTML = `
- <h1>Soạn thảo</h1>
- <div class="ide-editor-grid">
+ <div class="project-intro">
+  <h1>Làm việc với dự án</h1>
+  <p id="project-intro-note" class="muted">Mở thư mục, chọn tệp và cho trợ lý biết bạn muốn làm gì.</p>
+  <div class="actions"><button class="primary" id="ide-project" type="button">Mở thư mục dự án</button><button id="ide-close-project" type="button" hidden>Đóng dự án</button></div>
+ </div>
+ <details class="project-draft-options" id="project-drafts"><summary>Soạn tệp nhanh trong trình duyệt</summary></details>
+ <div class="ide-editor-grid" id="project-grid" hidden>
   <aside class="ide-files" aria-label="Danh sách tệp">
-   <button id="ide-project" type="button">Mở thư mục dự án</button>
-   <button id="ide-close-project" type="button" hidden>Đóng dự án</button>
    <div class="actions" id="ide-draft-actions"><button id="ide-add" type="button">＋ Tệp</button><button id="ide-import" type="button">Mở tệp</button></div>
    <input type="file" id="ide-file" hidden accept=".txt,.md,.json,.yaml,.yml,.csv,.js,.ts,.html,.css,.py,.toml,.xml,.sql,.log,text/plain">
    <strong id="ide-project-name" hidden></strong>
@@ -32,6 +36,19 @@ editor.innerHTML = `
    <textarea id="ide-text" aria-label="Nội dung tệp" spellcheck="false" placeholder="Tạo hoặc mở một tệp để bắt đầu"></textarea>
   </div>
  </div>
+ <section class="project-assistant" id="project-assistant" hidden>
+  <h2>Trợ lý cho tệp đang mở</h2>
+  <div class="actions" aria-label="Chọn việc cần làm">
+   <button type="button" data-skill="explain" aria-pressed="true">Giải thích</button>
+   <button type="button" data-skill="review" aria-pressed="false">Tìm lỗi</button>
+   <button type="button" data-skill="edit" aria-pressed="false">Đề xuất sửa</button>
+  </div>
+  <label id="project-request-label">Bạn muốn sửa gì?<textarea id="project-request" rows="2" maxlength="400" placeholder="Ví dụ: Kiểm tra dữ liệu đầu vào trước khi lưu"></textarea></label>
+  <p class="muted">Khi chạy, nội dung tệp đang mở được gửi đến nhà cung cấp AI bạn đã kết nối.</p>
+  <div class="actions"><button type="button" class="primary" id="project-run">Chạy trợ lý</button><button type="button" id="project-connect" hidden>Kết nối AI</button></div>
+  <output id="project-result-status" role="status"></output>
+  <div id="project-result" hidden><p id="project-summary"></p><details id="project-proposal" hidden><summary>Xem bản đề xuất</summary><pre id="project-code"></pre></details><button type="button" id="project-apply" hidden>Dùng bản đề xuất</button></div>
+ </section>
  <p class="ide-status muted" id="ide-status" role="status">Tệp đã lưu nằm trong trình duyệt này.</p>`;
 
 const storageKey = 'ai-office-ide-files-v1';
@@ -54,6 +71,9 @@ let dirty = false;
 let project = null;
 let projectFile = null;
 let pending = false;
+let skill = 'explain';
+let proposal = null;
+let assistantVersion = 0;
 const ignoredFolders = new Set(['.git', '.venv', 'node_modules', '__pycache__', '.next', 'dist', 'build', '.ai-office']);
 
 const selected = () => files.find(file => file.id === activeId);
@@ -68,6 +88,94 @@ function persist(next) {
   return false;
  }
 }
+function resetAssistant() {
+ assistantVersion++;
+ proposal = null;
+ by('project-result').hidden = true;
+ by('project-connect').hidden = true;
+ by('project-result-status').textContent = '';
+ by('project-run').disabled = false;
+}
+function syncProjectView() {
+ by('project-grid').hidden = !project && !by('project-drafts').open;
+ by('project-drafts').hidden = Boolean(project);
+ by('project-assistant').hidden = !projectFile;
+ by('project-intro-note').textContent = project ? 'Đang mở ' + project.name : 'Mở thư mục, chọn tệp và cho trợ lý biết bạn muốn làm gì.';
+}
+by('project-drafts').ontoggle = syncProjectView;
+const skillButtons = [...document.querySelectorAll('[data-skill]')];
+function selectSkill(name) {
+ skill = name;
+ resetAssistant();
+ for (const button of skillButtons) button.setAttribute('aria-pressed', button.dataset.skill === name);
+ by('project-request-label').hidden = name !== 'edit';
+}
+for (const button of skillButtons) button.onclick = () => selectSkill(button.dataset.skill);
+by('project-connect').onclick = () => showPane('settings');
+by('project-run').onclick = async () => {
+ if (!projectFile || pending) return;
+ const request = skill === 'edit' ? by('project-request').value.trim() : '';
+ const resultStatus = by('project-result-status');
+ if (skill === 'edit' && !request) { resultStatus.textContent = 'Nhập điều bạn muốn sửa.'; by('project-request').focus(); return; }
+ const source = content.value;
+ if (source.length > 5000) { resultStatus.textContent = 'Tệp quá dài cho trợ lý. Hãy chọn tệp ngắn hơn.'; return; }
+ const file = projectFile;
+ const version = ++assistantVersion;
+ by('project-run').disabled = true;
+ by('project-connect').hidden = true;
+ by('project-result').hidden = true;
+ resultStatus.textContent = 'Đang xử lý tệp…';
+ try {
+  await window.officeModelSettings.catalogReady;
+  if (version !== assistantVersion) return;
+  const settings = window.officeApiKeys.quickSettings();
+  const body = JSON.stringify({skill, source, path:file.path.slice(-240), request, model:settings.model});
+  if (new TextEncoder().encode(body).length > 15000) {
+   resultStatus.textContent = 'Tệp quá dài cho trợ lý. Hãy chọn tệp ngắn hơn.';
+   return;
+  }
+  const response = await fetch('/api/ai/project-assist', {
+   method: 'POST',
+   headers: {'Content-Type':'application/json', ...window.officeApiKeys.headers(settings)},
+   body,
+   redirect: 'error',
+   signal: AbortSignal.timeout(60000),
+  });
+  const result = await response.json();
+  if (version !== assistantVersion) return;
+  if (!response.ok) {
+   const status = result.status;
+   by('project-connect').hidden = !['missing','rejected','model_unavailable'].includes(status);
+   resultStatus.textContent = status === 'missing' ? 'Kết nối AI để chạy trợ lý.' : status === 'rejected' ? 'Key AI chưa dùng được. Kiểm tra kết nối.' : status === 'model_unavailable' ? 'Model hiện tại chưa dùng được. Thử nhà cung cấp khác.' : 'Trợ lý chưa trả được kết quả. Hãy thử lại.';
+   return;
+  }
+  by('project-summary').textContent = result.summary;
+  const editing = skill === 'edit' && Boolean(result.replacement);
+  proposal = editing ? {file, source, text: result.replacement} : null;
+  by('project-code').textContent = editing ? result.replacement : '';
+  by('project-proposal').open = editing;
+  by('project-proposal').hidden = by('project-apply').hidden = !editing;
+  by('project-result').hidden = false;
+  resultStatus.textContent = '';
+ } catch {
+  if (version === assistantVersion) resultStatus.textContent = 'Kết nối gián đoạn. Hãy thử lại.';
+ } finally {
+  if (version === assistantVersion) by('project-run').disabled = false;
+ }
+};
+by('project-apply').onclick = () => {
+ if (!proposal || pending || projectFile !== proposal.file || content.value !== proposal.source) {
+  by('project-result-status').textContent = 'Tệp đã thay đổi. Chạy lại trợ lý để cập nhật đề xuất.';
+  return;
+ }
+ content.value = proposal.text;
+ changed();
+ resetAssistant();
+ status('Đã đưa đề xuất vào trình soạn thảo. Bấm Lưu để ghi vào tệp.');
+ content.focus();
+};
+selectSkill('explain');
+
 function editableProject() {
  filename.value = projectFile?.path ?? '';
  filename.disabled = true;
@@ -76,6 +184,8 @@ function editableProject() {
  by('ide-save').disabled = by('ide-download').disabled = !projectFile;
  by('ide-delete').hidden = true;
  by('ide-reload-file').hidden = !projectFile;
+ resetAssistant();
+ syncProjectView();
 }
 function canLeaveProjectFile() {
  if (pending) return false;
@@ -297,6 +407,8 @@ by('ide-close-project').onclick = () => {
  by('ide-draft-actions').hidden = by('ide-delete').hidden = false;
  by('ide-reload-file').hidden = true;
  render();
+ resetAssistant();
+ syncProjectView();
  status('Đã đóng dự án.');
 };
 by('ide-add').onclick = () => add('untitled.md');
@@ -334,5 +446,6 @@ window.addEventListener('beforeunload', event => {
  if (dirty) { event.preventDefault(); event.returnValue = ''; }
 });
 render();
+syncProjectView();
 showPane('editor');
 })();

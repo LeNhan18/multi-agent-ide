@@ -62,6 +62,27 @@ status=404;assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).j
 status=429;assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).json()).status,'limited');
 context.fetch=async()=>{throw new DOMException('Timeout','TimeoutError');};
 assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).json()).status,'timeout');
+const project = {skill:'edit', source:'print(1)', path:'main.py', request:'In số 2'};
+const assist = (body, origin='https://office.test') => context.worker.fetch(new Request('https://office.test/api/ai/project-assist',{
+ method:'POST', headers:{Origin:origin,'oai-authenticated-user-id':'test','X-AI-Office-Key':'test-pasted'},
+ body:JSON.stringify(body),
+}),{});
+assert.equal((await assist(project,'https://other.test')).status,403);
+assert.equal((await assist({...project,skill:'custom'})).status,400);
+assert.equal((await assist({...project,request:''})).status,400);
+context.fetch=async(url,options)=>{
+ const body=JSON.parse(options.body);
+ assert.equal(options.headers.Authorization,'Bearer test-pasted');
+ assert.equal(JSON.parse(body.input).source,'print(1)');
+ assert.match(body.instructions,/Sửa đúng yêu cầu/);
+ return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Đổi số được in.',replacement:'print(2)'})}]}]});
+};
+assert.deepEqual(await (await assist(project)).json(),{summary:'Đổi số được in.',replacement:'print(2)'});
+context.fetch=async(url,options)=>{
+ assert.match(JSON.parse(options.body).instructions,/Tìm lỗi có căn cứ/);
+ return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Không thấy lỗi.',replacement:'ignored'})}]}]});
+};
+assert.deepEqual(await (await assist({...project,skill:'review'})).json(),{summary:'Không thấy lỗi.',replacement:''});
 const html=await readFile(new URL('../../public/workflow-lab/index.html', import.meta.url),'utf8');
 for(const [,script] of html.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(script);
 console.log('PASS: auth, origin, validation, 3 adapters, reasoning, provenance, dedicated isolation, provider errors, timeout, inline syntax');
