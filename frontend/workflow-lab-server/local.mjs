@@ -27,11 +27,12 @@ createServer(async (incoming, outgoing) => {
     if (typeof pastedKey === 'string') headers.set('X-AI-Office-Key', pastedKey);
     const options = { method: incoming.method, headers };
     if (incoming.method === 'POST') {
+      const bodyLimit = url.pathname === '/api/ai/project-assist' ? 256 * 1024 : 16384;
       const chunks = [];
       let length = 0;
       for await (const chunk of incoming) {
         length += chunk.length;
-        if (length > 16384) {
+        if (length > bodyLimit) {
           outgoing.writeHead(413).end();
           return;
         }

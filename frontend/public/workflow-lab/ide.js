@@ -44,7 +44,7 @@ editor.innerHTML = `
    <button type="button" data-skill="edit" aria-pressed="false">Đề xuất sửa</button>
   </div>
   <label id="project-request-label">Bạn muốn sửa gì?<textarea id="project-request" rows="2" maxlength="400" placeholder="Ví dụ: Kiểm tra dữ liệu đầu vào trước khi lưu"></textarea></label>
-  <p class="muted">Khi chạy, nội dung tệp đang mở được gửi đến nhà cung cấp AI bạn đã kết nối.</p>
+  <p class="muted" id="project-scope-note">Khi chạy, nội dung được gửi đến nhà cung cấp AI bạn đã kết nối. Có thể bôi đen một đoạn để chỉ gửi đoạn đó.</p>
   <div class="actions"><button type="button" class="primary" id="project-run">Chạy trợ lý</button><button type="button" id="project-connect" hidden>Kết nối AI</button></div>
   <output id="project-result-status" role="status"></output>
   <div id="project-result" hidden><p id="project-summary"></p><details id="project-proposal" hidden><summary>Xem bản đề xuất</summary><pre id="project-code"></pre></details><button type="button" id="project-apply" hidden>Dùng bản đề xuất</button></div>
@@ -117,8 +117,17 @@ by('project-run').onclick = async () => {
  const request = skill === 'edit' ? by('project-request').value.trim() : '';
  const resultStatus = by('project-result-status');
  if (skill === 'edit' && !request) { resultStatus.textContent = 'Nhập điều bạn muốn sửa.'; by('project-request').focus(); return; }
- const source = content.value;
- if (source.length > 5000) { resultStatus.textContent = 'Tệp quá dài cho trợ lý. Hãy chọn tệp ngắn hơn.'; return; }
+ const original = content.value;
+ const start = content.selectionStart;
+ const end = content.selectionEnd;
+ const selection = end > start;
+ const source = selection ? original.slice(start, end) : original;
+ const limit = skill === 'edit' ? 12000 : 40000;
+ if (source.length > limit) {
+  resultStatus.textContent = 'Bôi đen đoạn cần xử lý, tối đa ' + limit.toLocaleString('vi-VN') + ' ký tự, rồi bấm Chạy trợ lý.';
+  content.focus();
+  return;
+ }
  const file = projectFile;
  const version = ++assistantVersion;
  by('project-run').disabled = true;
@@ -129,9 +138,9 @@ by('project-run').onclick = async () => {
   await window.officeModelSettings.catalogReady;
   if (version !== assistantVersion) return;
   const settings = window.officeApiKeys.quickSettings();
-  const body = JSON.stringify({skill, source, path:file.path.slice(-240), request, model:settings.model});
-  if (new TextEncoder().encode(body).length > 15000) {
-   resultStatus.textContent = 'Tệp quá dài cho trợ lý. Hãy chọn tệp ngắn hơn.';
+  const body = JSON.stringify({skill, source, path:file.path.slice(-240), request, selection, model:settings.model});
+  if (new TextEncoder().encode(body).length > 256 * 1024) {
+   resultStatus.textContent = 'Bôi đen đoạn ngắn hơn rồi chạy lại.';
    return;
   }
   const response = await fetch('/api/ai/project-assist', {
@@ -151,7 +160,10 @@ by('project-run').onclick = async () => {
   }
   by('project-summary').textContent = result.summary;
   const editing = skill === 'edit' && Boolean(result.replacement);
-  proposal = editing ? {file, source, text: result.replacement} : null;
+  proposal = editing ? {
+   file, source: original,
+   text: selection ? original.slice(0, start) + result.replacement + original.slice(end) : result.replacement,
+  } : null;
   by('project-code').textContent = editing ? result.replacement : '';
   by('project-proposal').open = editing;
   by('project-proposal').hidden = by('project-apply').hidden = !editing;
