@@ -13,7 +13,7 @@ try {
 const id=agent=>agent.squad+':'+agent.role;
 const catalogReady = fetch('/api/ai/catalog?squad=general&role=0')
  .then(response => response.ok ? response.json() : null)
- .then(catalog => { if(catalog) window.officeApiKeys.registerModels(catalog.models); })
+ .then(catalog => { if(catalog) window.officeApiKeys.registerModels(catalog.models, catalog.connections); })
  .catch(() => {});
 function get(agent){
  const saved=preferences[id(agent)];
@@ -46,7 +46,7 @@ async function render(){
   return;
  }
  if(currentRequest!==request)return;
- window.officeApiKeys.registerModels(catalog.models);
+ window.officeApiKeys.registerModels(catalog.models, catalog.connections);
  const [modelField,model]=selectField('Model',Object.entries(catalog.models).map(([value,[provider,label]])=>[
   value,names[provider]+' · '+label+(catalog.recommendations.includes(value)?' ★':'')
  ]));

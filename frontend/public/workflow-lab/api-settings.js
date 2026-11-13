@@ -1,6 +1,8 @@
 (() => {
 'use strict';
 const keys = new Map();
+let preferredProvider = null;
+let configuredProviders = {};
 const providerNames = { openai: 'OpenAI', anthropic: 'Claude', gemini: 'Gemini' };
 const providersByModel = new Map([['gpt-5-mini', 'openai']]);
 const scopeId = (provider, agent) => agent ? provider + ':' + agent.squad + ':' + agent.role : provider;
@@ -56,6 +58,7 @@ function mount(host, {getProvider, agent, serverReady} = {}) {
    return false;
   }
   keys.set(scopeId(provider(), agent), value);
+  if (!agent) preferredProvider = provider();
   refresh();
   return true;
  }
@@ -96,8 +99,15 @@ function mount(host, {getProvider, agent, serverReady} = {}) {
 
 window.officeApiKeys = {
  mount,
- registerModels(models) {
+ registerModels(models, connections) {
+  if (connections) configuredProviders = connections;
   for (const [model, [provider]] of Object.entries(models)) providersByModel.set(model, provider);
+ },
+ quickSettings() {
+  const providers = [...new Set([preferredProvider, 'openai', 'anthropic', 'gemini'])].filter(Boolean);
+  const provider = providers.find(id => keys.has(id)) || providers.find(id => configuredProviders[id]?.sharedReady) || 'openai';
+  const model = [...providersByModel.entries()].find(([,id]) => id === provider)?.[0] || 'gpt-5-mini';
+  return {model, connection:'shared'};
  },
  headers(settings, agent) {
   const provider = providersByModel.get(settings.model || 'gpt-5-mini');
