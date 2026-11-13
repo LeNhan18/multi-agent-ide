@@ -35,6 +35,12 @@ The short task form works without credentials. To enable AI planning, provide `O
 
 Add industry profiles in `frontend/public/workflow-lab/squads.js` and corresponding role policies in `policies.js`. The simulated workflow uses browser storage and does not call the main runtime or GitHub.
 
+### Web IDE and API keys
+
+The **Soạn thảo** tab edits text files and saves them in the current browser. Use **Mở tệp** to import a local file and **Tải xuống** to export a copy.
+
+Paste a shared OpenAI, Anthropic or Gemini key under **Cài đặt**. For an agent-specific key, select the agent in **Văn phòng**, open **Model & kết nối**, then choose **Dùng key riêng cho agent**. Pasted keys live in page memory and reset on reload. The server uses them for the current provider request. Environment-based keys remain available as a fallback for the selected connection type.
+
 ### Per-agent models and terminals
 
 Select an agent, open **Model & kết nối**, and choose its model, reasoning level, and shared or dedicated connection. Dedicated keys use `<PROVIDER>_API_KEY_<SQUAD>_<ROLE>` (for example `ANTHROPIC_API_KEY_CONSTRUCTION_REVIEW`). Role suffixes are `PRODUCE`, `REVIEW`, `DELIVERY`, `AUDIT`, `INTAKE`, and `SPECIALIST`. A missing dedicated key never falls back to the shared key. Model availability and supported parameters depend on provider access; adapter tests do not establish live model availability.

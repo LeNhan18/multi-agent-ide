@@ -23,6 +23,8 @@ createServer(async (incoming, outgoing) => {
     if (url.pathname.startsWith('/workflow-lab/')) url.pathname = url.pathname.slice('/workflow-lab'.length);
     const headers = new Headers({ 'oai-authenticated-user-id': 'local-owner' });
     if (incoming.headers.origin) headers.set('Origin', incoming.headers.origin);
+    const pastedKey = incoming.headers['x-ai-office-key'];
+    if (typeof pastedKey === 'string') headers.set('X-AI-Office-Key', pastedKey);
     const options = { method: incoming.method, headers };
     if (incoming.method === 'POST') {
       const chunks = [];

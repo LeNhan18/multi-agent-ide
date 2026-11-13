@@ -194,13 +194,26 @@ function draw(){
   avatar(x,z,color,i);
  });
  polygons.sort((a,b)=>a.depth-b.depth).forEach(p=>path(p.points,p.color,p.surface?p.color:undefined,.45));
- hits=agents.map(([,,color,x,z],i)=>{
-  const anchor=project(x,2.1,z+.25),center=project(x,.9,z);
-  ctx.font='600 12px system-ui';const label=slots[i];const width=ctx.measureText(label).width+20;
-  ctx.fillStyle='#111d31';ctx.beginPath();ctx.roundRect(anchor.x-width/2,anchor.y-14,width,25,6);ctx.fill();
-  ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,anchor.x,anchor.y-1);
-  return {anchor,center,i,width};
+ ctx.font='600 12px system-ui';
+ const labels=agents.map(([name,,color,x,z],i)=>{
+  const projected=project(x,2.1,z+.25);
+  const width=Math.min(ctx.measureText(name).width+20,w-8);
+  const anchor={
+   x:Math.max(width/2+4,Math.min(w-width/2-4,projected.x)),
+   y:Math.max(18,Math.min(h-15,projected.y))
+  };
+  return {name,color,anchor,center:project(x,.9,z),i,width};
  });
+ // Draw the selected label last so it stays visible when names overlap.
+ hits=[...labels.filter(label=>label.i!==selected),labels[selected]].filter(Boolean);
+ for(const {name,color,anchor,i,width} of hits){
+  const active=i===selected;
+  ctx.fillStyle=active?color:'#111d31';
+  ctx.beginPath();ctx.roundRect(anchor.x-width/2,anchor.y-14,width,25,6);ctx.fill();
+  ctx.strokeStyle=color;ctx.stroke();
+  ctx.fillStyle=active?'#101a28':color;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(name,anchor.x,anchor.y-1,Math.max(1,width-16));
+ }
 }
 new ResizeObserver(draw).observe(canvas);
 canvas.onpointerdown=e=>{if(e.button!==0)return;drag={x:e.clientX,y:e.clientY,angle,pitch};canvas.setPointerCapture(e.pointerId);};
@@ -208,7 +221,7 @@ canvas.onpointermove=e=>{if(!drag)return;angle=drag.angle+(e.clientX-drag.x)*.00
 canvas.onpointerup=e=>{if(!drag)return;
  if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<5){
   const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
-  const tag=hits.find(o=>Math.abs(x-o.anchor.x)<o.width/2&&Math.abs(y-o.anchor.y)<15);
+  const tag=hits.findLast(o=>Math.abs(x-o.anchor.x)<o.width/2&&Math.abs(y-o.anchor.y)<15);
   const hit=tag??hits.map(o=>({...o,d:Math.hypot(x-o.center.x,y-o.center.y)})).sort((a,b)=>a.d-b.d)[0];
   if(hit&&(tag||hit.d<Math.min(canvas.clientWidth,canvas.clientHeight)*.11))select(hit.i);
  }
