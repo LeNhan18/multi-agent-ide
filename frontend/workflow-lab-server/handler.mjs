@@ -6,22 +6,37 @@ const json = (status, code = 200) => Response.json({ status }, {
   headers: { 'Cache-Control': 'no-store' }
 });
 
+const keyChecks = {
+  openai: ['https://api.openai.com/v1/models', key => ({ Authorization: 'Bearer ' + key })],
+  anthropic: ['https://api.anthropic.com/v1/models?limit=1', key => ({ 'x-api-key': key, 'anthropic-version': '2023-06-01' })],
+  gemini: ['https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', key => ({ 'x-goog-api-key': key })],
+};
+
+function requestKey(request) {
+  const key = request.headers.get('X-AI-Office-Key');
+  return key && /^[!-~]{1,512}$/.test(key) ? key : null;
+}
+
 async function connection(request, env, url) {
   if (!request.headers.get('oai-authenticated-user-id')) return json('unavailable', 401);
-  const key = env.OPENAI_API_KEY?.trim();
-  if (request.method === 'GET') return json(key ? 'configured' : 'missing');
+  const provider = url.searchParams.get('provider') ?? 'openai';
+  if (!Object.hasOwn(keyChecks, provider)) return json('invalid', 400);
+  const serverKey = env[providers[provider]]?.trim();
+  if (request.method === 'GET') return json(serverKey ? 'configured' : 'missing');
   if (request.method !== 'POST') return json('unavailable', 405);
   if (request.headers.get('Origin') !== url.origin) return json('unavailable', 403);
+  const pasted = requestKey(request);
+  if (request.headers.has('X-AI-Office-Key') && !pasted) return json('invalid', 400);
+  const key = pasted || serverKey;
   if (!key) return json('missing');
+  const [endpoint, headers] = keyChecks[provider];
   try {
-    const response = await fetch('https://api.openai.com/v1/models', {
-      headers: { Authorization: 'Bearer ' + key },
-      redirect: 'error',
-      signal: AbortSignal.timeout(8000)
+    const response = await fetch(endpoint, {
+      headers: headers(key), redirect: 'error', signal: AbortSignal.timeout(8000)
     });
     await response.body?.cancel();
     if (response.ok) return json('connected');
-    if (response.status === 401 || response.status === 403) return json('rejected');
+    if ([400, 401, 403].includes(response.status)) return json('rejected');
     if (response.status === 429) return json('limited');
     return json('unavailable', 502);
   } catch {
@@ -134,7 +149,9 @@ async function taskPlan(request, env, url) {
   const requestId = crypto.randomUUID();
   const [provider] = models[model];
   const secret = connection === 'dedicated' ? secretName(provider, squad, role) : providers[provider];
-  const key = env[secret]?.trim();
+  const pasted = requestKey(request);
+  if (request.headers.has('X-AI-Office-Key') && !pasted) return json('invalid', 400);
+  const key = pasted || env[secret]?.trim();
   if (!key) return json('missing', 503);
   const [industry, , roles] = officeSquads.profiles[squad];
   const policy = officePolicies[squad][role];
@@ -146,11 +163,12 @@ async function taskPlan(request, env, url) {
     const schema = { type: 'object', properties: planFields, required: Object.keys(planFields), additionalProperties: false };
     const result = await modelOutput(provider, model, key, input.prompt.trim(), instructions, schema, effort, AbortSignal.any([request.signal, AbortSignal.timeout(55000)]));
     if (result.error) return json(result.error, result.error === 'limited' ? 429 : 502);
-    const plan = JSON.parse(result.raw);
+    const rawPlan = JSON.parse(result.raw);
+    const plan = Object.fromEntries(Object.keys(planFields).map(field => [field, rawPlan[field]]));
     const limits = { title: 160, criteria: 600, risk: 450, next: 450 };
     for (const [field, max] of Object.entries(limits)) {
       if (typeof plan[field] !== 'string' || !plan[field].trim()) return json('unavailable', 502);
-      plan[field] = plan[field].trim().slice(0, max);
+      plan[field] = plan[field].split(key).join('[đã ẩn]').trim().slice(0, max);
     }
     if (!planFields.priority.enum.includes(plan.priority) || !Number.isFinite(plan.hours)) return json('unavailable', 502);
     plan.hours = Math.max(.25, Math.min(12, Math.round(plan.hours * 4) / 4));
@@ -166,7 +184,7 @@ export default {
     if (url.pathname.startsWith('/api/mcp/')) return mcpRoute(request, env, officeConfig);
     if (url.pathname === '/api/ai/catalog') return modelCatalog(request, env, url);
     if (url.pathname === '/api/ai/task-plan' || url.pathname === '/api/openai/task-plan') return taskPlan(request, env, url);
-    if (url.pathname === '/api/openai/connection') return connection(request, env, url);
+    if (url.pathname === '/api/ai/connection' || url.pathname === '/api/openai/connection') return connection(request, env, url);
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 });
     const path = url.pathname === '/' ? '/index.html' : url.pathname;
     const asset = Object.hasOwn(assets, path) ? assets[path] : undefined;

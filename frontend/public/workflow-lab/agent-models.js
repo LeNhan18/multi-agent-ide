@@ -11,11 +11,15 @@ try {
  if(saved&&typeof saved==='object'&&!Array.isArray(saved))preferences=saved;
 }catch{}
 const id=agent=>agent.squad+':'+agent.role;
+const catalogReady = fetch('/api/ai/catalog?squad=general&role=0')
+ .then(response => response.ok ? response.json() : null)
+ .then(catalog => { if(catalog) window.officeApiKeys.registerModels(catalog.models); })
+ .catch(() => {});
 function get(agent){
  const saved=preferences[id(agent)];
  return saved&&typeof saved.model==='string'&&['shared','dedicated'].includes(saved.connection)?{...defaultConfig,...saved}:defaultConfig;
 }
-window.officeModelSettings={get};
+window.officeModelSettings={get, catalogReady};
 
 function selectField(label,choices){
  const wrapper=document.createElement('label');
@@ -42,6 +46,7 @@ async function render(){
   return;
  }
  if(currentRequest!==request)return;
+ window.officeApiKeys.registerModels(catalog.models);
  const [modelField,model]=selectField('Model',Object.entries(catalog.models).map(([value,[provider,label]])=>[
   value,names[provider]+' · '+label+(catalog.recommendations.includes(value)?' ★':'')
  ]));
@@ -53,18 +58,23 @@ async function render(){
  model.value=Object.hasOwn(catalog.models,saved.model)?saved.model:defaultConfig.model;
  connection.value=saved.connection;
  reasoning.value=['auto','medium','high'].includes(saved.reasoning)?saved.reasoning:'auto';
+ const keyBox=document.createElement('div');
+ const refreshKey=window.officeApiKeys.mount(keyBox,{
+  agent, getProvider:()=>catalog.models[model.value]?.[0],
+  serverReady:()=>catalog.connections[catalog.models[model.value]?.[0]]?.dedicatedReady,
+ });
  function update(persist){
-  const [provider]=catalog.models[model.value];
-  const cfg=catalog.connections[provider];
-  hint.textContent='Secret: '+cfg[connection.value]+' · '+(cfg[connection.value+'Ready']?'Đã cấu hình':'Chưa cấu hình')+'. ★ Model gợi ý theo vai trò.';
+  hint.textContent=connection.value==='shared'?'Dán key chung trong Cài đặt.':'★ Model gợi ý theo vai trò.';
+  keyBox.hidden=connection.value!=='dedicated';
   if(persist){
    preferences[id(agent)]={model:model.value,connection:connection.value,reasoning:reasoning.value};
    try{localStorage.setItem(key,JSON.stringify(preferences));status.textContent='Đã lưu cấu hình trên trình duyệt.';}
    catch{status.textContent='Đã áp dụng cho phiên này.';}
   }
  }
- model.onchange=connection.onchange=reasoning.onchange=()=>update(true);
- host.replaceChildren(modelField,connectionField,reasoningField,hint,status);
+ model.onchange=connection.onchange=()=>{update(true);refreshKey();};
+ reasoning.onchange=()=>update(true);
+ host.replaceChildren(modelField,connectionField,reasoningField,hint,keyBox,status);
  update(false);
 }
 const panel=document.getElementById('agent-model-panel');

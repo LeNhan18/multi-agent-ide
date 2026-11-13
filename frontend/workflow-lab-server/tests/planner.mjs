@@ -15,7 +15,7 @@ const context={mcpRoute,Response,Request,URL,AbortSignal,crypto:webcrypto,fetch:
 }};
 vm.runInNewContext(source.replace('export default {','globalThis.worker = {'),context);
 const input={prompt:'Đối chiếu báo giá',squad:'general',role:4,model:'gpt-5-mini'};
-const invoke=(body,env={},auth=true,origin='https://office.test')=>context.worker.fetch(new Request('https://office.test/api/ai/task-plan',{method:'POST',headers:{Origin:origin,...(auth?{'oai-authenticated-user-id':'test'}:{})},body:JSON.stringify(body)}),env);
+const invoke=(body,env={},auth=true,origin='https://office.test',headers={})=>context.worker.fetch(new Request('https://office.test/api/ai/task-plan',{method:'POST',headers:{Origin:origin,...(auth?{'oai-authenticated-user-id':'test'}:{}),...headers},body:JSON.stringify(body)}),env);
 assert.equal((await invoke(input,{},false)).status,401);
 assert.equal((await invoke(input,{},true,'https://evil.test')).status,403);
 assert.equal((await invoke({...input,reasoning:'extreme'})).status,400);
@@ -31,6 +31,33 @@ assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).json()).prov
 assert.equal((await invoke({...input,connection:'dedicated'},{OPENAI_API_KEY:'shared'})).status,503);
 await invoke({...input,connection:'dedicated'},{OPENAI_API_KEY_GENERAL_INTAKE:'own'});
 assert.equal(calls.at(-1).options.headers.Authorization,'Bearer own');
+const pasted = 'test-pasted-key';
+const pastedHeader = {'X-AI-Office-Key': pasted};
+plan.risk = 'Reflected ' + pasted;
+const pastedPlan = await invoke({...input,connection:'dedicated'},{OPENAI_API_KEY_GENERAL_INTAKE:'server-key'},true,'https://office.test',pastedHeader);
+assert.equal(pastedPlan.status,200);
+assert.equal(calls.at(-1).options.headers.Authorization,'Bearer '+pasted);
+assert.ok(!(await pastedPlan.text()).includes(pasted));
+assert.equal((await invoke(input,{},true,'https://office.test',{'X-AI-Office-Key':'invalid key'})).status,400);
+assert.equal((await invoke(input,{},true,'https://evil.test',pastedHeader)).status,403);
+const providerChecks = [
+ ['openai','api.openai.com','Authorization','Bearer '+pasted],
+ ['anthropic','api.anthropic.com','x-api-key',pasted],
+ ['gemini','generativelanguage.googleapis.com','x-goog-api-key',pasted],
+];
+for(const [provider,host,header,expected] of providerChecks){
+ context.fetch=async(url,options)=>{
+  assert.equal(new URL(url).hostname,host);
+  assert.equal(options.headers[header],expected);
+  assert.equal(options.redirect,'error');
+  return Response.json({});
+ };
+ const response=await context.worker.fetch(new Request('https://office.test/api/ai/connection?provider='+provider,{
+  method:'POST',headers:{Origin:'https://office.test','oai-authenticated-user-id':'test',...pastedHeader}
+ }),{});
+ assert.equal((await response.json()).status,'connected');
+}
+context.fetch=async()=>Response.json({}, {status});
 status=404;assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).json()).status,'model_unavailable');
 status=429;assert.equal((await (await invoke(input,{OPENAI_API_KEY:'shared'})).json()).status,'limited');
 context.fetch=async()=>{throw new DOMException('Timeout','TimeoutError');};
