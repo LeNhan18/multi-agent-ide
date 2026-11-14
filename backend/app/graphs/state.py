@@ -5,6 +5,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from backend.app.tools.isolation import Draft
+
 
 class TaskStatus(str, Enum):
     PENDING = "PENDING"
@@ -28,8 +30,8 @@ class TaskItem(BaseModel):
     title: str
     assigned_agent: str | None = None
     status: TaskStatus = TaskStatus.PENDING
-    worktree_path: str | None = None
-    branch: str | None = None
+    draft_path: str | None = None
+    draft_branch: str | None = None
 
 
 class SharedWorkspaceState(BaseModel):
@@ -53,6 +55,7 @@ class SubAgentState(BaseModel):
     goal: str
     messages: list[dict] = Field(default_factory=list)
     modified_files: list[str] = Field(default_factory=list)
+    draft: Draft | None = None
     current_error: str | None = None
     error_signature_attempts: dict[str, int] = Field(default_factory=dict)
     token_count: int = 0
