@@ -13,6 +13,12 @@ uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 pytest
 ```
 
+## Agent file tools and drafts
+
+`backend/app/tools/files.py` gives each agent `list_directory`, `grep_search`, `read_file_lines`, `apply_search_replace_diff` and `write_file`, all confined to the agent's draft. Tools return a `ToolResult` instead of raising; failures carry an error code and a fix hint for the model. `write_file` refuses to overwrite files longer than 100 lines.
+
+`backend/app/tools/isolation.py` creates one draft per agent task. A Git repository root gets a worktree in `.agent-worktrees/<agent>-<task>` on branch `agent/<agent>/<task>`; any other folder gets a snapshot copy in `.agent-drafts/<agent>-<task>`. `promote()` needs an `Approval` with the reviewer's `APPROVE` verdict and a human approver. It merges the branch or copies changed files back, and stops with `DraftConflictError` if the same files changed in the main workspace.
+
 ## Run on Windows
 
 Install Python 3.11+ and Node.js 22+, then double-click `run.bat` in the repository root or run it from a terminal. The first run creates `.venv` and installs Python dependencies. Later runs reuse the environment and reinstall if `pyproject.toml` changes.
