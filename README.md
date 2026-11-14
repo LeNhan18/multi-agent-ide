@@ -19,6 +19,26 @@ pytest
 
 `backend/app/tools/isolation.py` creates one draft per agent task. A Git repository root gets a worktree in `.agent-worktrees/<agent>-<task>` on branch `agent/<agent>/<task>`; any other folder gets a snapshot copy in `.agent-drafts/<agent>-<task>`. `promote()` needs an `Approval` with the reviewer's `APPROVE` verdict and a human approver. It merges the branch or copies changed files back, and stops with `DraftConflictError` if the same files changed in the main workspace.
 
+## Squad governance
+
+`templates/*.yaml` are checked when loaded (`backend/app/agents/spec.py`, `catalog.py`):
+
+- Models come from the shared catalog (same ids as the Workflow Lab); the provider is derived from the model.
+- Each tool needs a permission: `read`, `write_draft`, `execute` or `external`. Unknown tools are denied.
+- `delete_file`, `install_system_package` and `notion_append` must be listed in `hitl_tools`, so they stop for human approval.
+- The supervisor only reads and routes. Reviewers read and run checks; they cannot edit. No agent can merge: drafts reach the main workspace only through `DraftManager.promote()`.
+- Every worker has a reviewer on a different provider, and agent budgets must fit inside `budget_limit_usd`.
+
+## LLM calls and budget
+
+`backend/app/agents/llm.py` calls Claude, GPT and Gemini with structured output. Agents use `MeteredLLM`, which checks the agent and squad budget before each call, records the real cost from the provider's token usage, and publishes `TOKEN_USAGE_UPDATE`. A call that could exceed the budget is refused before it is sent.
+
+Fill `config/model_prices.yaml` with USD per million tokens from each provider's pricing page. Models without a price cannot be called through `MeteredLLM`. Keys come from `<PROVIDER>_API_KEY`, or `<PROVIDER>_API_KEY_<SQUAD>_<ROLE>` for a dedicated key, which never falls back to the shared one.
+
+## Event stream
+
+`/ws/events?token=<session token>` streams `AgentEventPayload` from the runtime and replays the last 200 events on connect. Clients cannot send events. Allowed origins default to `localhost:3000`, `127.0.0.1:3000` and the Workflow Lab at `127.0.0.1:8080`; override with `WS_ALLOWED_ORIGINS`. Set `AI_OFFICE_SESSION_TOKEN` to keep the token stable across restarts.
+
 ## Run on Windows
 
 Install Python 3.11+ and Node.js 22+, then double-click `run.bat` in the repository root or run it from a terminal. The first run creates `.venv` and installs Python dependencies. Later runs reuse the environment and reinstall if `pyproject.toml` changes.
