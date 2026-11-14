@@ -4,20 +4,35 @@ description: Extract clauses from contracts (PDF/DOCX), flag risks and draft a r
 budget_limit_usd: 3.0
 supervisor:
   role_name: supervisor
-  system_prompt: Assign documents to the extractor, then send findings to the auditor. Finish with a memo draft.
+  system_prompt: Assign documents to the extractor, the findings to the memo writer, then send both to the auditor.
+  permissions: [read]
+  budget_usd: 0.3
   model_config: { model: claude-haiku-5-5 }
 members:
   - role_name: extractor
     system_prompt: Parse each document with Docling and extract parties, dates, obligations, termination and liability clauses with page references.
+    reports_to: supervisor
+    permissions: [read]
+    budget_usd: 1.0
     allowed_mcp_tools: [list_directory, docling_convert, read_file_lines]
     output_schema:
       type: object
       properties:
         clauses: { type: array, items: { type: object } }
+    model_config: { model: claude-sonnet-5-5 }
+  - role_name: memo_writer
+    system_prompt: Write the review memo in the draft from the extracted clauses. Cite the page of every clause; never invent clauses.
+    reports_to: supervisor
+    permissions: [read, write_draft]
+    budget_usd: 0.9
+    allowed_mcp_tools: [read_file_lines, write_file, apply_search_replace_diff]
+    model_config: { model: claude-sonnet-5-5 }
   - role_name: auditor
-    system_prompt: Compare extracted clauses against the checklist and list risks with severity and citations. Never invent clauses.
-    allowed_mcp_tools: [read_file_lines, apply_search_replace_diff]
+    system_prompt: Check the extracted clauses and the memo against the checklist and the source documents. List risks with severity and citations, then APPROVE or REJECT.
+    reports_to: supervisor
     is_reviewer: true
-    reviews: [extractor]
-    model_config: { provider: openai, model: gpt-4o-mini }
-    hitl_tools: [overwrite_original_document]
+    reviews: [extractor, memo_writer]
+    permissions: [read]
+    budget_usd: 0.8
+    allowed_mcp_tools: [read_file_lines, docling_convert, grep_search]
+    model_config: { model: gpt-5.4-mini }
