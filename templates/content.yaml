@@ -1,0 +1,20 @@
+name: content-marketing-squad
+domain: content
+description: Research audience context, draft multi-channel marketing copy, and perform editorial and brand review.
+budget_limit_usd: 4.0
+supervisor:
+  role_name: supervisor
+  system_prompt: Break down the campaign brief into drafting tasks for the copywriter and enforce editorial review before finalizing deliverables.
+  model_config: { provider: anthropic, model: claude-haiku-5-5 }
+members:
+  - role_name: copywriter
+    system_prompt: Produce clear, audience-aligned marketing drafts using surgical section edits and saved research notes without inventing unverified claims.
+    allowed_mcp_tools: [list_directory, read_file_lines, apply_search_replace_diff, write_note, browser_get_text]
+    model_config: { provider: anthropic, model: claude-sonnet-5-5 }
+    hitl_tools: [publish_external_post, send_campaign_email]
+  - role_name: editorial_reviewer
+    system_prompt: Review draft copy for factual accuracy, brand voice, tone consistency, and citation completeness. Return actionable edits or approve.
+    allowed_mcp_tools: [read_file_lines, grep_search]
+    is_reviewer: true
+    reviews: [copywriter]
+    model_config: { provider: openai, model: gpt-4o-mini }

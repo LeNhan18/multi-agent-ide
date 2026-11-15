@@ -6,12 +6,19 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 
 from backend.app.core.events import AgentEventPayload
 from backend.app.api.mcp import router as mcp_router
+from backend.app.api.orchestration import router as orchestration_router
 
-ALLOWED_ORIGINS = {"http://localhost:3000", "http://127.0.0.1:3000"}
+ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+}
 SESSION_TOKEN = secrets.token_urlsafe(32)
 
 app = FastAPI(title="Multi-Agent IDE")
 app.include_router(mcp_router)
+app.include_router(orchestration_router)
 
 
 @app.on_event("startup")

@@ -58,12 +58,51 @@ function draw(){
  const dpr=Math.min(devicePixelRatio||1,2);
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const now=performance.now();
  const size=Math.min(w/12.7,h/8.8)*zoom, ca=Math.cos(angle),sa=Math.sin(angle),cp=Math.cos(pitch),sp=Math.sin(pitch);
  function project(x,y,z){const u=x*ca-z*sa,v=x*sa+z*ca;return {x:w/2+u*size,y:h*.54+(v*sp-y*cp)*size,depth:v*cp+y*sp};}
  const floor=(x,z)=>project(x,0,z);
- path([floor(-5,-4.4),floor(5,-4.4),floor(5,4.4),floor(-5,4.4)],'#101d34','#304669');
- for(let x=-5;x<=5;x++)path([floor(x,-4.4),floor(x,4.4)],null,'#253653');
- for(let z=-4;z<=4;z++)path([floor(-5,z),floor(5,z)],null,'#253653');
+ const floorAt=(x,y,z)=>project(x,y,z);
+ function floorShadow(cx,cz,rx,rz,alpha=.36){
+  const pts=[];
+  for(let k=0;k<12;k++){const a=k*Math.PI/6;pts.push(project(cx+Math.cos(a)*rx,.003,cz+Math.sin(a)*rz));}
+  path(pts,`rgba(2,6,16,${alpha})`);
+ }
+ const hubColor=(packet?.route!=null&&routes[packet.route]?.[2])||agents[selected]?.[2]||'#34d399';
+ // 3D studio floor slab (skirt faces back-to-front, then top deck) to avoid painter z-fighting with furniture
+ path([floorAt(-5.36,-.25,-4.76),floorAt(5.36,-.25,-4.76),floorAt(5.36,-.25,4.76),floorAt(-5.36,-.25,4.76)],'rgba(2,6,15,.46)');
+ const slabSides=[
+  {pts:[floorAt(-5.18,0,-4.58),floorAt(5.18,0,-4.58),floorAt(5.18,-.22,-4.58),floorAt(-5.18,-.22,-4.58)],c:'#15243d'},
+  {pts:[floorAt(-5.18,0,4.58),floorAt(5.18,0,4.58),floorAt(5.18,-.22,4.58),floorAt(-5.18,-.22,4.58)],c:'#1b2e4d'},
+  {pts:[floorAt(-5.18,0,-4.58),floorAt(-5.18,0,4.58),floorAt(-5.18,-.22,4.58),floorAt(-5.18,-.22,-4.58)],c:'#142239'},
+  {pts:[floorAt(5.18,0,-4.58),floorAt(5.18,0,4.58),floorAt(5.18,-.22,4.58),floorAt(5.18,-.22,-4.58)],c:'#1e3354'}
+ ];
+ slabSides.sort((a,b)=>(a.pts.reduce((s,p)=>s+p.depth,0)/4)-(b.pts.reduce((s,p)=>s+p.depth,0)/4))
+  .forEach(s=>path(s.pts,s.c,'#2c4368',.8));
+ const deck=[floor(-5.18,-4.58),floor(5.18,-4.58),floor(5.18,4.58),floor(-5.18,4.58)];
+ path(deck,'#0c172a','#3c5a85',1.2);
+ const innerDeck=[floor(-5,-4.4),floor(5,-4.4),floor(5,4.4),floor(-5,4.4)];
+ path(innerDeck,'#101d34','#2d4468',1);
+ ctx.save();
+ ctx.beginPath();innerDeck.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip();
+ const cPt=floor(0,0);
+ const glow=ctx.createRadialGradient(cPt.x,cPt.y,size*.2,cPt.x,cPt.y,size*6.4);
+ glow.addColorStop(0,'rgba(45, 212, 191, 0.12)');
+ glow.addColorStop(.55,'rgba(30, 58, 102, 0.08)');
+ glow.addColorStop(1,'rgba(4, 9, 20, 0.34)');
+ ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+ ctx.restore();
+ for(let x=-5;x<=5;x++)path([floor(x,-4.4),floor(x,4.4)],null,'rgba(48,72,108,.45)',.8);
+ for(let z=-4;z<=4;z++)path([floor(-5,z),floor(5,z)],null,'rgba(48,72,108,.45)',.8);
+ // Central LangGraph Core floor conduits & concentric rings
+ const hubOuter=[],hubInner=[];
+ for(let k=0;k<20;k++){const a=k*Math.PI/10;hubOuter.push(project(Math.cos(a)*.95,.008,Math.sin(a)*.95));hubInner.push(project(Math.cos(a)*.74,.01,Math.sin(a)*.74));}
+ path(hubOuter,'rgba(15,29,52,.68)',hubColor+'66',1.3);
+ path(hubInner,null,hubColor+'aa',1.1);
+ floorShadow(0,0,.85,.85,.44);
+ ctx.setLineDash([3,5]);
+ agents.forEach(([,,c,ax,az])=>path([project(0,.012,0),project(ax,.012,az-.53)],null,c+'28',1));
+ ctx.setLineDash([]);
  const pc=i=>[agents[i][3],agents[i][4]-.53];
  function wire(a,b){
   const [x,z]=pc(a),[u,v]=pc(b);
@@ -72,9 +111,17 @@ function draw(){
  }
  routes.forEach(([a,b,color],i)=>{
   const points=wire(a,b).map(([x,z])=>project(x,.035,z));
+  const activeRoute=packet?.route===i;
   ctx.setLineDash(i===2?[5,5]:i===3||i===4?[2,5]:[]);
-  path(points,null,packet?.route===i?color:color+'83',packet?.route===i?3:1.6);
+  if(activeRoute)path(points,null,color+'3d',6.5);
+  path(points,null,activeRoute?color:color+'88',activeRoute?2.8:1.6);
   ctx.setLineDash([]);
+  if(activeRoute){
+   const segT=((now*.0014)%1)*3,idx=Math.min(2,Math.floor(segT)),f=segT-idx;
+   const px=points[idx].x+(points[idx+1].x-points[idx].x)*f,py=points[idx].y+(points[idx+1].y-points[idx].y)*f;
+   ctx.fillStyle=color+'55';ctx.beginPath();ctx.arc(px,py,6.5,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(px,py,2.8,0,Math.PI*2);ctx.fill();
+  }
   const a1=points[1],b1=points[2],mx=(a1.x+b1.x)/2,my=(a1.y+b1.y)/2,theta=Math.atan2(b1.y-a1.y,b1.x-a1.x);
   path([{x:mx+5*Math.cos(theta),y:my+5*Math.sin(theta)},{x:mx+5*Math.cos(theta+2.4),y:my+5*Math.sin(theta+2.4)},{x:mx+5*Math.cos(theta-2.4),y:my+5*Math.sin(theta-2.4)}],color);
  });
@@ -176,28 +223,82 @@ function draw(){
    o(.12,1.787,.67,.042,.043,.044,color);
   }
  }
+ // Central LangGraph Core Hub at room center
+ const hubHover=packet?Math.sin(now*.006)*.045:0;
+ box(0,.07,0,1.32,.14,1.32,'#1e304c');
+ box(0,.21,0,.94,.14,.94,'#294063');
+ box(0,.305,0,.98,.045,.98,hubColor);
+ box(0,.54,0,.52,.42,.52,'#152540');
+ box(0,.77,0,.62,.06,.62,'#4b668f');
+ for(const hx of [-.21,.21])for(const hz of [-.21,.21])box(hx,.81,hz,.07,.04,.07,hubColor);
+ box(0,.99+hubHover,0,.28,.28,.28,hubColor);
+
  agents.forEach(([,,color,x,z],i)=>{
+  if(selected===i){
+   const halo=[floor(x-1.36,z-1.46),floor(x+1.36,z-1.46),floor(x+1.36,z+1.46),floor(x-1.36,z+1.46)];
+   path(halo,null,color+'55',3.8);
+  }
   const platform=[floor(x-1.25,z-1.35),floor(x+1.25,z-1.35),floor(x+1.25,z+1.35),floor(x-1.25,z+1.35)];
-  path(platform,color+(selected===i?'24':'10'),color+(selected===i?'ff':'52'),selected===i?2:1);
+  path(platform,color+(selected===i?'28':'11'),color+(selected===i?'ff':'5a'),selected===i?2.2:1.1);
+  // Floor contact shadows under desk, tower, avatar & chair
+  floorShadow(x,z-.53,.96,.52,.36);
+  floorShadow(x+.67,z-.55,.25,.32,.32);
+  floorShadow(x,z+.30,.48,.64,.38);
+  // Workstation desk & steel legs
   box(x,.87,z-.53,1.72,.13,.88,'#617695');
   for(const dx of [-.72,.72])for(const dz of [-.84,-.24])box(x+dx,.42,z+dz,.09,.84,.09,'#455675');
+  // Main monitor
   box(x,1.03,z-.72,.2,.22,.18,'#637b9e');
   box(x,1.37,z-.76,1.01,.59,.13,'#253652');
-  box(x,1.37,z-.683,.86,.45,.022,'#152745');
+  box(x,1.37,z-.683,.86,.45,.022,'#142542');
   box(x,1.49,z-.669,.68,.038,.012,color);
-  box(x-.14,1.37,z-.669,.39,.034,.012,color);
+  box(x-.14,1.37,z-.669,.39,.034,.012,'#7dd3fc');
   box(x-.21,1.26,z-.669,.25,.027,.012,color);
-  box(x, .956,z-.27,.65,.038,.21,'#afc5d6');
-  box(x+.49,.958,z-.25,.13,.043,.2,'#afc5d6');
+  // Side dashboard monitor (left)
+  box(x-.64,1.01,z-.70,.12,.16,.12,'#536888');
+  box(x-.64,1.29,z-.69,.38,.48,.09,'#253652');
+  box(x-.64,1.29,z-.638,.31,.39,.018,'#13233e');
+  box(x-.64,1.39,z-.624,.21,.034,.01,color);
+  box(x-.64,1.30,z-.624,.21,.028,.01,'#8fb2d9');
+  box(x-.64,1.21,z-.624,.16,.028,.01,color);
+  // Desk mat, keyboard & mouse
+  box(x+.12,.941,z-.26,1.04,.012,.33,'#1b2a44');
+  box(x,.959,z-.27,.65,.038,.21,'#afc5d6');
+  box(x+.49,.961,z-.25,.12,.04,.19,'#cbd5e1');
+  // Coffee mug (front-left)
+  box(x-.66,.99,z-.22,.12,.11,.12,'#e2e8f0');
+  box(x-.66,1.046,z-.22,.09,.012,.09,'#451a03');
+  box(x-.66,.99,z-.158,.07,.04,.01,color);
+  // Desk lamp (back-right)
+  box(x+.68,.955,z-.77,.17,.04,.17,'#334766');
+  box(x+.68,1.14,z-.77,.045,.34,.045,'#4c6387');
+  box(x+.62,1.30,z-.73,.17,.055,.13,'#253652');
+  box(x+.62,1.268,z-.73,.12,.016,.09,'#fde68a');
+  // PC tower & LED strip
   box(x+.67,.37,z-.55,.31,.69,.47,'#263957');
   box(x+.67,.56,z-.308,.17,.045,.02,color);
+  box(x+.67,.35,z-.308,.045,.26,.015,color);
+  // Ergonomic 3D swivel chair behind avatar
+  const zc=z+.62;
+  box(x,.035,zc,.52,.05,.10,'#2a3b57');
+  box(x,.035,zc,.10,.05,.52,'#2a3b57');
+  box(x,.21,zc,.09,.30,.09,'#475f82');
+  box(x,.40,zc-.04,.54,.09,.50,'#2b3d59');
+  box(x,.40,zc-.295,.44,.05,.02,color);
+  box(x,.68,zc+.22,.12,.52,.07,'#3b5070');
+  box(x,.78,zc+.17,.48,.54,.09,'#243550');
+  box(x,.92,zc+.12,.38,.10,.02,color);
+  box(x-.29,.54,zc-.03,.06,.18,.06,'#3b5070');
+  box(x-.29,.64,zc-.05,.08,.04,.34,'#253652');
+  box(x+.29,.54,zc-.03,.06,.18,.06,'#3b5070');
+  box(x+.29,.64,zc-.05,.08,.04,.34,'#253652');
   avatar(x,z,color,i);
  });
  polygons.sort((a,b)=>a.depth-b.depth).forEach(p=>path(p.points,p.color,p.surface?p.color:undefined,.45));
  ctx.font='600 12px system-ui';
  const labels=agents.map(([name,,color,x,z],i)=>{
   const projected=project(x,2.1,z+.25);
-  const width=Math.min(ctx.measureText(name).width+20,w-8);
+  const width=Math.min(ctx.measureText(name).width+28,w-8);
   const anchor={
    x:Math.max(width/2+4,Math.min(w-width/2-4,projected.x)),
    y:Math.max(18,Math.min(h-15,projected.y))
@@ -211,8 +312,10 @@ function draw(){
   ctx.fillStyle=active?color:'#111d31';
   ctx.beginPath();ctx.roundRect(anchor.x-width/2,anchor.y-14,width,25,6);ctx.fill();
   ctx.strokeStyle=color;ctx.stroke();
-  ctx.fillStyle=active?'#101a28':color;ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(name,anchor.x,anchor.y-1,Math.max(1,width-16));
+  ctx.fillStyle=active?'#101a28':color;
+  ctx.beginPath();ctx.arc(anchor.x-width/2+10,anchor.y-1.5,3,0,Math.PI*2);ctx.fill();
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(name,anchor.x+4,anchor.y-1,Math.max(1,width-24));
  }
 }
 new ResizeObserver(draw).observe(canvas);

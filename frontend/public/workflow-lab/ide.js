@@ -3,21 +3,29 @@
 const navigation = document.querySelector('.ide-nav');
 const panes = [...document.querySelectorAll('[data-pane]')];
 const buttons = [...navigation.querySelectorAll('[data-ide]')];
+const quickOffice = document.getElementById('quick-office');
 function showPane(name) {
  for (const pane of panes) pane.hidden = pane.dataset.pane !== name;
  for (const button of buttons) button.setAttribute('aria-pressed', button.dataset.ide === name);
- if (name === 'settings' || name === 'office') document.getElementById('ide-advanced').open = true;
+ if (quickOffice) quickOffice.setAttribute('aria-pressed', String(name === 'office'));
+ if (name === 'settings' || name === 'office') {
+  const advanced = document.getElementById('ide-advanced');
+  if (advanced) advanced.open = true;
+ }
 }
 for (const button of buttons) button.onclick = () => showPane(button.dataset.ide);
+if (quickOffice) quickOffice.onclick = () => showPane('office');
 
 const editor = document.getElementById('ide-editor');
 editor.innerHTML = `
  <div class="project-intro">
-  <h1>Làm việc với dự án</h1>
-  <p id="project-intro-note" class="muted">Mở thư mục, chọn tệp và cho trợ lý biết bạn muốn làm gì.</p>
+  <div class="project-intro-copy">
+   <h1>Làm việc với dự án</h1>
+   <p id="project-intro-note" class="muted">Mở thư mục, chọn tệp và cho trợ lý biết bạn muốn làm gì.</p>
+  </div>
   <div class="actions"><button class="primary" id="ide-project" type="button">Mở thư mục dự án</button><button id="ide-close-project" type="button" hidden>Đóng dự án</button></div>
  </div>
- <details class="project-draft-options" id="project-drafts"><summary>Soạn tệp nhanh trong trình duyệt</summary></details>
+ <details class="project-draft-options" id="project-drafts" open><summary>Soạn tệp nhanh trong trình duyệt</summary></details>
  <div class="ide-editor-grid" id="project-grid" hidden>
   <aside class="ide-files" aria-label="Danh sách tệp">
    <div class="actions" id="ide-draft-actions"><button id="ide-add" type="button">＋ Tệp</button><button id="ide-import" type="button">Mở tệp</button></div>
@@ -330,6 +338,12 @@ function render() {
  content.disabled = filename.disabled = !file;
  for (const id of ['ide-save', 'ide-download', 'ide-delete']) by(id).disabled = !file;
  fileList.replaceChildren();
+ if (!files.length) {
+  const emptyNote = document.createElement('p');
+  emptyNote.className = 'ide-files-empty muted';
+  emptyNote.textContent = 'Chưa có tệp nháp. Bấm ＋ Tệp để tạo nhanh hoặc Mở thư mục dự án.';
+  fileList.append(emptyNote);
+ }
  for (const item of files) {
   const button = document.createElement('button');
   button.type = 'button';
