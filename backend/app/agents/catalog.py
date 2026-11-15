@@ -64,11 +64,17 @@ TOOL_PERMISSIONS: dict[str, Permission] = {
     "notion_append": Permission.EXTERNAL,
     "outlook_list": Permission.EXTERNAL,
     "outlook_create_draft": Permission.EXTERNAL,
+    "publish_external_post": Permission.EXTERNAL,
+    "send_campaign_email": Permission.EXTERNAL,
+    "export_financial_report": Permission.EXTERNAL,
 }
 
 # Irreversible or outward-facing tools: any agent granted one must list it in hitl_tools,
 # so the graph places interrupt_before on it.
-ALWAYS_HITL: frozenset[str] = frozenset({"delete_file", "install_system_package", "notion_append"})
+ALWAYS_HITL: frozenset[str] = frozenset({
+    "delete_file", "install_system_package", "notion_append",
+    "publish_external_post", "send_campaign_email", "export_financial_report",
+})
 
 # Promotion of a draft into the main workspace is done by the runtime after reviewer APPROVE and
 # human approval (DraftManager.promote); no agent is ever granted a merge tool.

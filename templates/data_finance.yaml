@@ -1,0 +1,28 @@
+name: data-finance-squad
+domain: data_finance
+description: Analyze financial statements, spreadsheets and tabular datasets, then audit calculations and compliance.
+budget_limit_usd: 5.0
+supervisor:
+  role_name: supervisor
+  system_prompt: Decompose the financial analysis objective into tasks, assign data processing to the data analyst, and route outputs to the financial auditor for verification.
+  permissions: [read]
+  budget_usd: 0.5
+  model_config: { provider: anthropic, model: claude-haiku-5-5 }
+members:
+  - role_name: data_analyst
+    system_prompt: Parse spreadsheets, CSVs and financial PDFs, run reproducible calculations in the isolated sandbox, and draft structured quantitative summaries.
+    reports_to: supervisor
+    permissions: [read, write_draft, execute, external]
+    budget_usd: 3.0
+    allowed_mcp_tools: [list_directory, read_file_lines, docling_convert, run_in_sandbox, write_note, export_financial_report]
+    hitl_tools: [export_financial_report]
+    model_config: { provider: anthropic, model: claude-sonnet-5-5 }
+  - role_name: financial_auditor
+    system_prompt: Reconcile all totals, ratios, and source references in the analyst output. Approve only when calculations and citations match source records.
+    reports_to: supervisor
+    is_reviewer: true
+    reviews: [data_analyst]
+    permissions: [read, execute]
+    budget_usd: 1.5
+    allowed_mcp_tools: [read_file_lines, grep_search, run_in_sandbox]
+    model_config: { provider: openai, model: gpt-5.4-mini }

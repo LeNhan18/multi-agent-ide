@@ -34,7 +34,7 @@ class ModelSettings(BaseModel):
     model: str = DEFAULT_MODEL["anthropic"]
     effort: Literal["low", "medium", "high"] | None = None
     max_output_tokens: int = Field(default=4096, ge=256, le=64_000)
-    context_window: int = Field(default=200_000, ge=8_000)
+    context_window: int = Field(default=200_000, ge=1_000)
 
     @model_validator(mode="before")
     @classmethod

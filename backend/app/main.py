@@ -8,9 +8,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 
 from backend.app.api.mcp import router as mcp_router
+from backend.app.api.orchestration import router as orchestration_router
 from backend.app.core.bus import EventBus
 
-DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,http://127.0.0.1:8080"
+DEFAULT_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080"
 ALLOWED_ORIGINS = {o.strip() for o in os.environ.get("WS_ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()}
 SESSION_TOKEN = os.environ.get("AI_OFFICE_SESSION_TOKEN") or secrets.token_urlsafe(32)
 
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Multi-Agent IDE", lifespan=lifespan)
 app.include_router(mcp_router)
+app.include_router(orchestration_router)
 
 
 @app.get("/health")
