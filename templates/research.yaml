@@ -5,17 +5,30 @@ budget_limit_usd: 4.0
 supervisor:
   role_name: supervisor
   system_prompt: Split the research question into sub-questions, dispatch to the researcher, then to the writer.
+  permissions: [read]
+  budget_usd: 0.3
   model_config: { model: claude-haiku-5-5 }
 members:
   - role_name: researcher
     system_prompt: Gather sources with the browser tools and save notes with URLs. Prefer primary sources.
+    reports_to: supervisor
+    permissions: [read, write_draft, external]
+    budget_usd: 1.5
     allowed_mcp_tools: [browser_navigate, browser_get_text, write_note]
+    model_config: { model: gemini-3.8-flash }
   - role_name: writer
     system_prompt: Write the report section by section. Every claim must cite a saved source.
-    allowed_mcp_tools: [read_file_lines, apply_search_replace_diff]
+    reports_to: supervisor
+    permissions: [read, write_draft]
+    budget_usd: 1.2
+    allowed_mcp_tools: [read_file_lines, write_file, apply_search_replace_diff]
+    model_config: { model: claude-sonnet-5-5 }
   - role_name: fact_checker
-    system_prompt: Verify every figure and citation in the draft against the notes. Return mismatches.
-    allowed_mcp_tools: [read_file_lines, grep_search]
+    system_prompt: Verify every figure and citation in the draft against the notes. Return mismatches, then APPROVE or REJECT.
+    reports_to: supervisor
     is_reviewer: true
     reviews: [researcher, writer]
-    model_config: { provider: openai, model: gpt-4o-mini }
+    permissions: [read]
+    budget_usd: 1.0
+    allowed_mcp_tools: [read_file_lines, grep_search]
+    model_config: { model: gpt-5.4-mini }

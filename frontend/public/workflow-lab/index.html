@@ -339,6 +339,8 @@ form label{display:grid;gap:5px;font-size:13px;font-weight:650}
   .terminal-head,.terminal-toolbar{padding:12px}
   #terminal-output{padding:0 12px;height:240px}
 }
+/* Long files and selected text in the assistant (PR #9) */
+.project-assistant .actions{justify-content:flex-start}.ide-editor-body textarea{width:100%;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}.ide-editor-toolbar,.project-assistant{min-width:0}.ide-editor-toolbar input{min-width:min(120px,100%)}#project-summary{white-space:pre-wrap;overflow-wrap:anywhere}
 </style>
 <header class="ide-top"><div class="ide-brand"><span class="mark">AO</span><span class="ide-brand-text">AI Office<small>Multi-Agent Workspace IDE</small></span></div><div class="actions"><button type="button" id="quick-office" aria-pressed="false" title="Mở nhanh Văn phòng 3D">🏢 Văn phòng 3D</button><button class="primary" id="new">＋ Công việc mới</button></div></header>
 <div class="ide-layout">
@@ -563,4 +565,4 @@ $('file').onchange=async()=>{
  catch{$('notice').textContent='Tệp JSON không hợp lệ. Hãy chọn bản xuất từ AI Office.';}
 };
 render();
-</script><script src="./squads.js" defer></script><script src="./policies.js" defer></script><script src="./workflow.js?v=4" defer></script><script src="./office.js?v=9" defer></script><script src="./agent-terminal.js" defer></script><script src="./api-settings.js?v=3" defer></script><script src="./agent-models.js?v=2" defer></script><script src="./mcp-settings.js" defer></script><script src="./ide.js?v=3" defer></script></html>
+</script><script src="./squads.js" defer></script><script src="./policies.js" defer></script><script src="./workflow.js?v=4" defer></script><script src="./office.js?v=9" defer></script><script src="./agent-terminal.js" defer></script><script src="./api-settings.js?v=3" defer></script><script src="./agent-models.js?v=2" defer></script><script src="./mcp-settings.js" defer></script><script src="./ide.js?v=4" defer></script></html>

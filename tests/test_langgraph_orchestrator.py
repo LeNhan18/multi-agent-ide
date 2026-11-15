@@ -38,14 +38,17 @@ def _build_custom_squad(
             "supervisor": {
                 "role_name": supervisor_role,
                 "system_prompt": "Coordinate tasks.",
+                "budget_usd": budget_limit_usd / 4,
                 "model_config": {"provider": "anthropic", "model": "claude-haiku-5-5"},
             },
             "members": [
                 {
                     "role_name": worker_role,
                     "system_prompt": "Execute tasks.",
-                    "allowed_mcp_tools": ["read_file_lines", "write_note"],
-                    "hitl_tools": hitl_tools or ["dangerous_action"],
+                    "allowed_mcp_tools": ["read_file_lines", "write_note", "delete_file"],
+                    "permissions": ["read", "write_draft"],
+                    "budget_usd": budget_limit_usd / 2,
+                    "hitl_tools": hitl_tools or ["delete_file"],
                     "model_config": {
                         "provider": "anthropic",
                         "model": "claude-sonnet-5-5",
@@ -57,7 +60,8 @@ def _build_custom_squad(
                     "system_prompt": "Verify work.",
                     "is_reviewer": True,
                     "reviews": [worker_role],
-                    "model_config": {"provider": "openai", "model": "gpt-4o-mini"},
+                    "budget_usd": budget_limit_usd / 4,
+                    "model_config": {"provider": "openai", "model": "gpt-5.4-mini"},
                 },
             ],
         }
@@ -334,7 +338,7 @@ class TestLangGraphOrchestrator(unittest.TestCase):
             paused = orch.invoke(
                 goal="SQLite HITL persistence",
                 thread_id="sqlite-thread-1",
-                requested_tools={"analyst": ["dangerous_action"]},
+                requested_tools={"analyst": ["delete_file"]},
             )
             self.assertEqual(paused["status"], TaskStatus.AWAITING_APPROVAL.value)
             resumed = orch.resume("sqlite-thread-1", approved=True)

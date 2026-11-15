@@ -7,7 +7,7 @@ import {mcpRoute} from '../mcp.mjs';
 const source = 'const assets = '+JSON.stringify(assets)+'; const officeConfig = '+JSON.stringify(officeConfig)+';\n'+(await readFile(new URL('../handler.mjs', import.meta.url),'utf8')).replace("import { assets, officeConfig } from './assets.mjs';",'').replace("import { mcpRoute } from './mcp.mjs';",'');
 let calls=[];let status=200;
 const plan={title:'Đối chiếu BOQ',criteria:'Đối chiếu mã hàng',risk:'Thiếu bản vẽ',next:'Thu thập tài liệu',priority:'Vừa',hours:2};
-const context={mcpRoute,Response,Request,URL,AbortSignal,crypto:webcrypto,fetch:async(url,options)=>{
+const context={mcpRoute,TextEncoder,Response,Request,URL,AbortSignal,crypto:webcrypto,fetch:async(url,options)=>{
  calls.push({url,options,body:JSON.parse(options.body)});
  if(status!==200)return Response.json({}, {status});
  const raw=JSON.stringify(plan);
@@ -83,6 +83,16 @@ context.fetch=async(url,options)=>{
  return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Không thấy lỗi.',replacement:'ignored'})}]}]});
 };
 assert.deepEqual(await (await assist({...project,skill:'review'})).json(),{summary:'Không thấy lỗi.',replacement:''});
+const longSource = '# Hướng dẫn\n'.repeat(1500);
+context.fetch=async(_url,options)=>{
+ const body=JSON.parse(options.body);
+ assert.match(body.instructions,/Giải thích mục đích/);
+ assert.equal(JSON.parse(body.input).source,longSource);
+ return Response.json({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({summary:'Hướng dẫn dự án.',replacement:''})}]}]});
+};
+assert.equal((await assist({...project,skill:'explain',source:longSource})).status,200);
+assert.equal((await assist({...project,source:longSource})).status,400);
+assert.equal((await assist({...project,skill:'review',source:'x'.repeat(40001)})).status,400);
 const html=await readFile(new URL('../../public/workflow-lab/index.html', import.meta.url),'utf8');
 for(const [,script] of html.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(script);
 console.log('PASS: auth, origin, validation, 3 adapters, reasoning, provenance, dedicated isolation, provider errors, timeout, inline syntax');

@@ -371,7 +371,7 @@ class TestSquadTemplates(unittest.TestCase):
         self.assertTrue(df_members["financial_auditor"].is_reviewer)
         self.assertEqual(df_members["financial_auditor"].reviews, ["data_analyst"])
         self.assertEqual(df_members["financial_auditor"].llm.provider, "openai")
-        self.assertEqual(df_members["financial_auditor"].llm.model, "gpt-4o-mini")
+        self.assertEqual(df_members["financial_auditor"].llm.model, "gpt-5.4-mini")
 
         cm = squads["content-marketing-squad"]
         self.assertEqual(cm.domain, "content")
@@ -381,7 +381,7 @@ class TestSquadTemplates(unittest.TestCase):
         self.assertTrue(cm_members["editorial_reviewer"].is_reviewer)
         self.assertEqual(cm_members["editorial_reviewer"].reviews, ["copywriter"])
         self.assertEqual(cm_members["editorial_reviewer"].llm.provider, "openai")
-        self.assertEqual(cm_members["editorial_reviewer"].llm.model, "gpt-4o-mini")
+        self.assertEqual(cm_members["editorial_reviewer"].llm.model, "gpt-5.4-mini")
 
 
 if __name__ == "__main__":

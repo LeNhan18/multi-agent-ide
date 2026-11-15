@@ -9,3 +9,4 @@ dist/
 .agent-worktrees/
 *.sqlite
 .ai-office/
+*.egg-info/

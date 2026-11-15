@@ -5,16 +5,24 @@ budget_limit_usd: 4.0
 supervisor:
   role_name: supervisor
   system_prompt: Break down the campaign brief into drafting tasks for the copywriter and enforce editorial review before finalizing deliverables.
+  permissions: [read]
+  budget_usd: 0.4
   model_config: { provider: anthropic, model: claude-haiku-5-5 }
 members:
   - role_name: copywriter
     system_prompt: Produce clear, audience-aligned marketing drafts using surgical section edits and saved research notes without inventing unverified claims.
-    allowed_mcp_tools: [list_directory, read_file_lines, apply_search_replace_diff, write_note, browser_get_text]
-    model_config: { provider: anthropic, model: claude-sonnet-5-5 }
+    reports_to: supervisor
+    permissions: [read, write_draft, external]
+    budget_usd: 2.4
+    allowed_mcp_tools: [list_directory, read_file_lines, apply_search_replace_diff, write_note, browser_get_text, publish_external_post, send_campaign_email]
     hitl_tools: [publish_external_post, send_campaign_email]
+    model_config: { provider: anthropic, model: claude-sonnet-5-5 }
   - role_name: editorial_reviewer
     system_prompt: Review draft copy for factual accuracy, brand voice, tone consistency, and citation completeness. Return actionable edits or approve.
-    allowed_mcp_tools: [read_file_lines, grep_search]
+    reports_to: supervisor
     is_reviewer: true
     reviews: [copywriter]
-    model_config: { provider: openai, model: gpt-4o-mini }
+    permissions: [read]
+    budget_usd: 1.2
+    allowed_mcp_tools: [read_file_lines, grep_search]
+    model_config: { provider: openai, model: gpt-5.4-mini }

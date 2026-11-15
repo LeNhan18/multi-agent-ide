@@ -126,7 +126,7 @@ class OrchestrationApiTests(unittest.TestCase):
                         "    reviews: [worker]",
                         "    model_config:",
                         "      provider: openai",
-                        "      model: gpt-4o-mini",
+                        "      model: gpt-5.4-mini",
                     ]
                 ),
                 encoding="utf-8",

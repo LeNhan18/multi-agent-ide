@@ -182,7 +182,7 @@ async function taskPlan(request, env, url) {
 const projectSkills = {
   explain: { role: 5, guide: 'Giải thích mục đích, đầu vào, đầu ra và các bước chính của tệp.' },
   review: { role: 1, guide: 'Tìm lỗi có căn cứ, nêu vị trí và cách kiểm tra. Phân biệt lỗi chắc chắn với nghi vấn.' },
-  edit: { role: 0, guide: 'Sửa đúng yêu cầu, giữ nguyên phần không liên quan. Trả toàn bộ nội dung tệp trong replacement để người dùng xem và chọn áp dụng.' },
+  edit: { role: 0, guide: 'Sửa đúng yêu cầu, giữ nguyên phần không liên quan. Trả toàn bộ nội dung được cung cấp sau khi sửa trong replacement để người dùng xem và chọn áp dụng.' },
 };
 
 async function projectAssist(request, env, url) {
@@ -192,14 +192,14 @@ async function projectAssist(request, env, url) {
   let input;
   try {
     const body = await request.text();
-    if (body.length > 15000) return json('invalid', 413);
+    if (new TextEncoder().encode(body).length > 256 * 1024) return json('invalid', 413);
     input = JSON.parse(body);
   } catch {
     return json('invalid', 400);
   }
-  const { skill, source, path, request: goal = '', model = 'gpt-5-mini' } = input || {};
+  const { skill, source, path, request: goal = '', selection = false, model = 'gpt-5-mini' } = input || {};
   if (!Object.hasOwn(projectSkills, skill) || !Object.hasOwn(models, model) ||
-      typeof source !== 'string' || source.length > 5000 || typeof path !== 'string' ||
+      typeof source !== 'string' || source.length > (skill === 'edit' ? 12000 : 40000) || typeof selection !== 'boolean' || typeof path !== 'string' ||
       path.length > 240 || typeof goal !== 'string' || goal.length > 400 ||
       (skill === 'edit' && !goal.trim())) return json('invalid', 400);
   const [provider] = models[model];
@@ -224,7 +224,7 @@ async function projectAssist(request, env, url) {
     additionalProperties: false,
   };
   try {
-    const payload = JSON.stringify({ path, goal, source });
+    const payload = JSON.stringify({ path, goal, scope: selection ? 'Đoạn được chọn' : 'Cả tệp', source });
     const result = await modelOutput(provider, model, key, payload, instructions, schema, 'medium',
       AbortSignal.any([request.signal, AbortSignal.timeout(55000)]), skill === 'edit' ? 6500 : 2800);
     if (result.error) return json(result.error, result.error === 'limited' ? 429 : 502);
