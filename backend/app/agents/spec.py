@@ -7,15 +7,50 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from backend.app.agents.catalog import (
+    ALWAYS_HITL,
+    MODELS,
+    REVIEWER_PERMISSIONS,
+    SUPERVISOR_PERMISSIONS,
+    TOOL_PERMISSIONS,
+    Permission,
+    Provider,
+)
+
 Domain = Literal["research", "data_finance", "content", "legal", "engineering", "custom"]
+DEFAULT_MODEL: dict[str, str] = {
+    "anthropic": "claude-sonnet-5-5",
+    "openai": "gpt-5.4-mini",
+    "gemini": "gemini-3.8-flash",
+}
 
 
 class ModelSettings(BaseModel):
-    provider: str = "anthropic"
-    model: str = "claude-sonnet-5-5"
-    temperature: float = 0.2
-    max_output_tokens: int = 4096
-    context_window: int = 200_000
+    """Model choice for one agent. ``provider`` is derived from ``model`` via the catalog."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Provider = "anthropic"
+    model: str = DEFAULT_MODEL["anthropic"]
+    effort: Literal["low", "medium", "high"] | None = None
+    max_output_tokens: int = Field(default=4096, ge=256, le=64_000)
+    context_window: int = Field(default=200_000, ge=8_000)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_from_catalog(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "model" not in data:
+            data["model"] = DEFAULT_MODEL.get(data.get("provider", "anthropic"), DEFAULT_MODEL["anthropic"])
+        entry = MODELS.get(data["model"])
+        if entry is None:
+            raise ValueError(f"unknown model {data['model']!r}; choose one of {sorted(MODELS)}")
+        if "provider" in data and data["provider"] != entry[0]:
+            raise ValueError(f"model {data['model']} belongs to provider {entry[0]}, not {data['provider']}")
+        data["provider"] = entry[0]
+        return data
 
 
 class AgentSpec(BaseModel):
@@ -31,12 +66,30 @@ class AgentSpec(BaseModel):
     is_reviewer: bool = False
     reports_to: str | None = None
     reviews: list[str] = Field(default_factory=list)
-    permissions: list[str] = Field(default_factory=list)
+    permissions: list[Permission] = Field(default_factory=list)
     budget_usd: float = Field(default=1.0, ge=0, allow_inf_nan=False)
     hitl_tools: list[str] = Field(
         default_factory=list,
         description="Tools that require human approval (interrupt_before).",
     )
+
+    @model_validator(mode="after")
+    def _validate_tools(self) -> "AgentSpec":
+        unknown = [t for t in self.allowed_mcp_tools if t not in TOOL_PERMISSIONS]
+        if unknown:
+            raise ValueError(f"{self.role_name}: unknown tools {unknown} are denied")
+        missing = sorted({TOOL_PERMISSIONS[t].value for t in self.allowed_mcp_tools} - {p.value for p in self.permissions})
+        if missing:
+            raise ValueError(f"{self.role_name}: allowed tools need permissions {missing}")
+        stray = [t for t in self.hitl_tools if t not in self.allowed_mcp_tools]
+        if stray:
+            raise ValueError(f"{self.role_name}: hitl_tools {stray} are not in allowed_mcp_tools")
+        unguarded = sorted(ALWAYS_HITL.intersection(self.allowed_mcp_tools) - set(self.hitl_tools))
+        if unguarded:
+            raise ValueError(f"{self.role_name}: {unguarded} must be listed in hitl_tools")
+        if self.is_reviewer and not set(self.permissions) <= REVIEWER_PERMISSIONS:
+            raise ValueError(f"{self.role_name}: reviewers may only read or run checks, not edit")
+        return self
 
 
 class SquadTemplate(BaseModel):
@@ -50,7 +103,7 @@ class SquadTemplate(BaseModel):
     supervisor: AgentSpec
     members: list[AgentSpec]
     max_steps: int = 100
-    budget_limit_usd: float = 5.0
+    budget_limit_usd: float = Field(default=5.0, gt=0, allow_inf_nan=False)
     max_review_rejections: int = 3
 
     @model_validator(mode="after")
@@ -60,6 +113,11 @@ class SquadTemplate(BaseModel):
             raise ValueError("member role_name values must be unique")
         if self.supervisor.role_name in names:
             raise ValueError("supervisor role_name must differ from members")
+        if self.supervisor.is_reviewer or not set(self.supervisor.permissions) <= SUPERVISOR_PERMISSIONS:
+            raise ValueError("supervisor routes work only: it cannot review, edit, execute or reach outside")
+        total = self.supervisor.budget_usd + sum(m.budget_usd for m in self.members)
+        if total > self.budget_limit_usd + 1e-9:
+            raise ValueError(f"agent budgets total {total:.2f} USD, above budget_limit_usd {self.budget_limit_usd:.2f}")
         agents = [self.supervisor, *self.members]
         by_name = {agent.role_name: agent for agent in agents}
         for agent in agents:
@@ -70,7 +128,7 @@ class SquadTemplate(BaseModel):
             for target in agent.reviews:
                 if target not in by_name or target == agent.role_name:
                     raise ValueError(f"invalid review target {target}")
-                if agent.llm.provider.strip().casefold() == by_name[target].llm.provider.strip().casefold():
+                if agent.llm.provider == by_name[target].llm.provider:
                     raise ValueError(f"reviewer and {target} must use different providers")
         for member in self.members:
             if not member.is_reviewer and not any(member.role_name in reviewer.reviews for reviewer in agents if reviewer.is_reviewer):
