@@ -127,7 +127,7 @@ const planFields = {
   hours: { type: 'number' }
 };
 
-async function taskPlan(request, env, url) {
+async function taskPlan(request, env, url, accounts) {
   if (!request.headers.get('oai-authenticated-user-id')) return json('unavailable', 401);
   if (request.method !== 'POST') return json('unavailable', 405);
   if (request.headers.get('Origin') !== url.origin) return json('unavailable', 403);
@@ -140,19 +140,21 @@ async function taskPlan(request, env, url) {
   } catch {
     return json('invalid', 400);
   }
-  const { squad = 'general', role = 4, model = 'gpt-5-mini', connection = 'shared', reasoning = 'auto' } = input;
+  const { squad = 'general', role = 4, model = 'gpt-5-mini', connection = 'shared', reasoning = 'auto', accountId } = input;
   const { officeSquads, officePolicies } = officeConfig;
   if (!Object.hasOwn(officeSquads.profiles, squad) || !Number.isInteger(role) || !roleIds[role] ||
     !Object.hasOwn(models, model) || !['auto', 'medium', 'high'].includes(reasoning) || !['shared', 'dedicated'].includes(connection)) return json('invalid', 400);
   const effort = reasoning === 'auto' ? (input.prompt.trim().length <= 120 ? 'high' : 'medium') : reasoning;
   const started = Date.now();
   const requestId = crypto.randomUUID();
-  const [provider] = models[model];
+  if (accountId !== undefined && (!accounts || typeof accountId !== 'string' ||
+      !/^[0-9a-f-]{36}$/.test(accountId))) return json('invalid', 400);
+  const provider = accountId ? 'openai' : models[model][0];
   const secret = connection === 'dedicated' ? secretName(provider, squad, role) : providers[provider];
   const pasted = requestKey(request);
   if (request.headers.has('X-AI-Office-Key') && !pasted) return json('invalid', 400);
   const key = pasted || env[secret]?.trim();
-  if (!key) return json('missing', 503);
+  if (!accountId && !key) return json('missing', 503);
   const [industry, , roles] = officeSquads.profiles[squad];
   const policy = officePolicies[squad][role];
   const instructions = 'Lập một việc cho bảng AI Office, tiếng Việt ngắn gọn. Chỉ lập kế hoạch. Không bịa nguồn hoặc tuyên bố đã làm việc. Khi đề bài mơ hồ, ghi giả định trong rủi ro. Ước lượng từ 0.25 đến 12 giờ. ' +
@@ -161,18 +163,25 @@ async function taskPlan(request, env, url) {
     ' Áp dụng kỹ năng và giới hạn phù hợp vào tiêu chí kiểm chứng và bước tiếp theo.';
   try {
     const schema = { type: 'object', properties: planFields, required: Object.keys(planFields), additionalProperties: false };
-    const result = await modelOutput(provider, model, key, input.prompt.trim(), instructions, schema, effort, AbortSignal.any([request.signal, AbortSignal.timeout(55000)]));
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(55000)]);
+    const result = accountId
+      ? await accounts.infer(accountId, {
+        instructions, input: [{ role: 'user', content: input.prompt.trim() }], reasoning: { effort },
+        text: { format: { type: 'json_schema', name: 'task_plan', strict: true, schema } },
+      }, model, signal)
+      : await modelOutput(provider, model, key, input.prompt.trim(), instructions, schema, effort, signal);
+    const actualModel = result.model ?? model;
     if (result.error) return json(result.error, result.error === 'limited' ? 429 : 502);
     const rawPlan = JSON.parse(result.raw);
     const plan = Object.fromEntries(Object.keys(planFields).map(field => [field, rawPlan[field]]));
     const limits = { title: 160, criteria: 600, risk: 450, next: 450 };
     for (const [field, max] of Object.entries(limits)) {
       if (typeof plan[field] !== 'string' || !plan[field].trim()) return json('unavailable', 502);
-      plan[field] = plan[field].split(key).join('[đã ẩn]').trim().slice(0, max);
+      plan[field] = (key && !accountId ? plan[field].split(key).join('[đã ẩn]') : plan[field]).trim().slice(0, max);
     }
     if (!planFields.priority.enum.includes(plan.priority) || !Number.isFinite(plan.hours)) return json('unavailable', 502);
     plan.hours = Math.max(.25, Math.min(12, Math.round(plan.hours * 4) / 4));
-    return Response.json({ plan, model, provenance: { requestId, squad, role, model, provider, effort, durationMs: Date.now() - started, createdAt: new Date().toISOString(), kind: 'ai-proposal' } }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ plan, model: actualModel, provenance: { requestId, squad, role, model: actualModel, provider, effort, durationMs: Date.now() - started, createdAt: new Date().toISOString(), kind: 'ai-proposal' } }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return json(error.name === 'TimeoutError' ? 'timeout' : error.name === 'AbortError' ? 'cancelled' : 'unavailable', 502);
   }
@@ -185,7 +194,7 @@ const projectSkills = {
   edit: { role: 0, guide: 'Sửa đúng yêu cầu, giữ nguyên phần không liên quan. Trả toàn bộ nội dung được cung cấp sau khi sửa trong replacement để người dùng xem và chọn áp dụng.' },
 };
 
-async function projectAssist(request, env, url) {
+async function projectAssist(request, env, url, accounts) {
   if (!request.headers.get('oai-authenticated-user-id')) return json('unavailable', 401);
   if (request.method !== 'POST') return json('unavailable', 405);
   if (request.headers.get('Origin') !== url.origin) return json('unavailable', 403);
@@ -197,16 +206,18 @@ async function projectAssist(request, env, url) {
   } catch {
     return json('invalid', 400);
   }
-  const { skill, source, path, request: goal = '', selection = false, model = 'gpt-5-mini' } = input || {};
+  const { skill, source, path, request: goal = '', selection = false, model = 'gpt-5-mini', accountId } = input || {};
   if (!Object.hasOwn(projectSkills, skill) || !Object.hasOwn(models, model) ||
       typeof source !== 'string' || source.length > (skill === 'edit' ? 12000 : 40000) || typeof selection !== 'boolean' || typeof path !== 'string' ||
       path.length > 240 || typeof goal !== 'string' || goal.length > 400 ||
       (skill === 'edit' && !goal.trim())) return json('invalid', 400);
-  const [provider] = models[model];
+  if (accountId !== undefined && (!accounts || typeof accountId !== 'string' ||
+      !/^[0-9a-f-]{36}$/.test(accountId))) return json('invalid', 400);
+  const provider = accountId ? 'openai' : models[model][0];
   const pasted = requestKey(request);
   if (request.headers.has('X-AI-Office-Key') && !pasted) return json('invalid', 400);
   const key = pasted || env[providers[provider]]?.trim();
-  if (!key) return json('missing', 503);
+  if (!accountId && !key) return json('missing', 503);
 
   const { role, guide } = projectSkills[skill];
   const policy = officeConfig.officePolicies.engineering[role];
@@ -225,16 +236,22 @@ async function projectAssist(request, env, url) {
   };
   try {
     const payload = JSON.stringify({ path, goal, scope: selection ? 'Đoạn được chọn' : 'Cả tệp', source });
-    const result = await modelOutput(provider, model, key, payload, instructions, schema, 'medium',
-      AbortSignal.any([request.signal, AbortSignal.timeout(55000)]), skill === 'edit' ? 6500 : 2800);
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(55000)]);
+    const maxOutput = skill === 'edit' ? 6500 : 2800;
+    const result = accountId
+      ? await accounts.infer(accountId, {
+        instructions, input: [{ role: 'user', content: payload }], reasoning: { effort: 'medium' },
+        text: { format: { type: 'json_schema', name: 'project_assist', strict: true, schema } },
+      }, model, signal)
+      : await modelOutput(provider, model, key, payload, instructions, schema, 'medium', signal, maxOutput);
     if (result.error) return json(result.error, result.error === 'limited' ? 429 : 502);
     const output = JSON.parse(result.raw);
     if (typeof output?.summary !== 'string' || !output.summary.trim() ||
         typeof output.replacement !== 'string' || output.replacement.length > 16000) return json('unavailable', 502);
-    const redact = value => value.split(key).join('[đã ẩn]');
+    const redact = value => key && !accountId ? value.split(key).join('[đã ẩn]') : value;
     return Response.json({
       summary: redact(output.summary).slice(0, 2400),
-      replacement: skill === 'edit' && !output.replacement.includes(key) ? output.replacement : '',
+      replacement: skill === 'edit' && redact(output.replacement) === output.replacement ? output.replacement : '',
     }, { headers: noStore });
   } catch {
     return json('unavailable', 502);
@@ -242,12 +259,12 @@ async function projectAssist(request, env, url) {
 }
 
 export default {
-  fetch(request, env) {
+  fetch(request, env, accounts) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/mcp/')) return mcpRoute(request, env, officeConfig);
-    if (url.pathname === '/api/ai/project-assist') return projectAssist(request, env, url);
+    if (url.pathname === '/api/ai/project-assist') return projectAssist(request, env, url, accounts);
     if (url.pathname === '/api/ai/catalog') return modelCatalog(request, env, url);
-    if (url.pathname === '/api/ai/task-plan' || url.pathname === '/api/openai/task-plan') return taskPlan(request, env, url);
+    if (url.pathname === '/api/ai/task-plan' || url.pathname === '/api/openai/task-plan') return taskPlan(request, env, url, accounts);
     if (url.pathname === '/api/ai/connection' || url.pathname === '/api/openai/connection') return connection(request, env, url);
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 });
     const path = url.pathname === '/' ? '/index.html' : url.pathname;

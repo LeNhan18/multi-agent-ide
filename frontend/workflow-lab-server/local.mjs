@@ -1,11 +1,13 @@
 import { createServer } from 'node:http';
 import handler from './handler.mjs';
+import { createChatGPTAccounts } from './chatgpt-accounts.mjs';
 
 const host = '127.0.0.1';
 const port = Number(process.env.WORKFLOW_LAB_PORT || 8080);
 const origin = 'http://' + host + ':' + port;
 
-createServer(async (incoming, outgoing) => {
+let accounts;
+const server = createServer(async (incoming, outgoing) => {
   if (incoming.headers.host !== host + ':' + port || !incoming.url?.startsWith('/')) {
     outgoing.writeHead(403).end();
     return;
@@ -22,10 +24,13 @@ createServer(async (incoming, outgoing) => {
     }
     if (url.pathname.startsWith('/workflow-lab/')) url.pathname = url.pathname.slice('/workflow-lab'.length);
     const headers = new Headers({ 'oai-authenticated-user-id': 'local-owner' });
+    if (incoming.headers.cookie && url.pathname === '/auth/callback') headers.set('Cookie', incoming.headers.cookie);
     if (incoming.headers.origin) headers.set('Origin', incoming.headers.origin);
     const pastedKey = incoming.headers['x-ai-office-key'];
     if (typeof pastedKey === 'string') headers.set('X-AI-Office-Key', pastedKey);
-    const options = { method: incoming.method, headers };
+    const cancelled = new AbortController();
+    outgoing.on('close', () => { if (!outgoing.writableFinished) cancelled.abort(); });
+    const options = { method: incoming.method, headers, signal: cancelled.signal };
     if (incoming.method === 'POST') {
       const bodyLimit = url.pathname === '/api/ai/project-assist' ? 256 * 1024 : 16384;
       const chunks = [];
@@ -40,10 +45,18 @@ createServer(async (incoming, outgoing) => {
       }
       options.body = Buffer.concat(chunks);
     }
-    const response = await handler.fetch(new Request(url, options), process.env);
+    const request = new Request(url, options);
+    const response = url.pathname.startsWith('/api/local/chatgpt/') || url.pathname === '/auth/callback'
+      ? (accounts ? await accounts.route(request, url) : new Response(null, { status: 503 }))
+      : await handler.fetch(request, process.env, accounts);
     outgoing.writeHead(response.status, Object.fromEntries(response.headers));
     outgoing.end(Buffer.from(await response.arrayBuffer()));
   } catch {
     outgoing.writeHead(500).end();
   }
-}).listen(port, host, () => console.log(origin + '/workflow-lab/'));
+});
+server.listen(port, host, () => {
+  try { accounts = createChatGPTAccounts(origin); }
+  catch { console.error('Không mở được dữ liệu đăng nhập ChatGPT. Các chức năng khác vẫn dùng được.'); }
+  console.log(origin + '/workflow-lab/');
+});

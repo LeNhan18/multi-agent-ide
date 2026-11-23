@@ -67,6 +67,12 @@ The **Soạn thảo** tab edits text files and saves them in the current browser
 
 Paste a shared OpenAI, Anthropic or Gemini key under **Cài đặt**. For an agent-specific key, select the agent in **Văn phòng**, open **Model & kết nối**, then choose **Dùng key riêng cho agent**. Pasted keys live in page memory and reset on reload. The server uses them for the current provider request. Environment-based keys remain available as a fallback for the selected connection type.
 
+### Sign in with ChatGPT on localhost
+
+Open **Kết nối AI** → **Tiếp tục bằng ChatGPT** and authorize AI Office in the browser. This requires a ChatGPT plan eligible for [plan usage in local apps](https://developers.openai.com/siwc/token-sharing-open-source). Use **Thêm tài khoản ChatGPT** to connect more accounts. The first connected account becomes the default for planning and the file assistant. Set **Tài khoản mặc định** to change it, or assign a specific account to an agent under **Model & kết nối**. Requests for different agents can run concurrently and use their assigned accounts. An account reaching its limit never triggers an automatic account switch.
+
+Credentials are stored in the current OS user's application data on the machine running Workflow Lab, outside the repository and browser storage. Connect only on a machine you control. **Ngắt kết nối** clears the local session and attempts to revoke it. This login applies to the local Workflow Lab. The hosted Site and the Python runtime use their existing connections. Google AI Pro (Antigravity) and Claude subscriptions are separate from the Gemini and Anthropic API connections.
+
 ### Per-agent models and terminals
 
 Select an agent, open **Model & kết nối**, and choose its model, reasoning level, and shared or dedicated connection. Dedicated keys use `<PROVIDER>_API_KEY_<SQUAD>_<ROLE>` (for example `ANTHROPIC_API_KEY_CONSTRUCTION_REVIEW`). Role suffixes are `PRODUCE`, `REVIEW`, `DELIVERY`, `AUDIT`, `INTAKE`, and `SPECIALIST`. A missing dedicated key never falls back to the shared key. Model availability and supported parameters depend on provider access; adapter tests do not establish live model availability.

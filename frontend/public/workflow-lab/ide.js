@@ -143,17 +143,18 @@ by('project-run').onclick = async () => {
  by('project-result').hidden = true;
  resultStatus.textContent = 'Đang xử lý tệp…';
  try {
-  await window.officeModelSettings.catalogReady;
+  await Promise.all([window.officeModelSettings.catalogReady, window.officeAccounts?.ready]);
   if (version !== assistantVersion) return;
   const settings = window.officeApiKeys.quickSettings();
-  const body = JSON.stringify({skill, source, path:file.path.slice(-240), request, selection, model:settings.model});
+  const account = window.officeAccounts?.selection() ?? {};
+  const body = JSON.stringify({skill, source, path:file.path.slice(-240), request, selection, model:settings.model, ...account});
   if (new TextEncoder().encode(body).length > 256 * 1024) {
    resultStatus.textContent = 'Bôi đen đoạn ngắn hơn rồi chạy lại.';
    return;
   }
   const response = await fetch('/api/ai/project-assist', {
    method: 'POST',
-   headers: {'Content-Type':'application/json', ...window.officeApiKeys.headers(settings)},
+   headers: {'Content-Type':'application/json', ...(!account.accountId && window.officeApiKeys.headers(settings))},
    body,
    redirect: 'error',
    signal: AbortSignal.timeout(60000),
@@ -162,8 +163,8 @@ by('project-run').onclick = async () => {
   if (version !== assistantVersion) return;
   if (!response.ok) {
    const status = result.status;
-   by('project-connect').hidden = !['missing','rejected','model_unavailable'].includes(status);
-   resultStatus.textContent = status === 'missing' ? 'Kết nối AI để chạy trợ lý.' : status === 'rejected' ? 'Key AI chưa dùng được. Kiểm tra kết nối.' : status === 'model_unavailable' ? 'Model hiện tại chưa dùng được. Thử nhà cung cấp khác.' : 'Trợ lý chưa trả được kết quả. Hãy thử lại.';
+   by('project-connect').hidden = !['missing','account_missing','rejected','model_unavailable'].includes(status);
+   resultStatus.textContent = status === 'account_missing' ? 'Kết nối lại tài khoản ChatGPT để chạy trợ lý.' : status === 'missing' ? 'Kết nối AI để chạy trợ lý.' : status === 'rejected' ? 'Key AI chưa dùng được. Kiểm tra kết nối.' : status === 'model_unavailable' ? 'Model hiện tại chưa dùng được. Thử nhà cung cấp khác.' : 'Trợ lý chưa trả được kết quả. Hãy thử lại.';
    return;
   }
   by('project-summary').textContent = result.summary;
