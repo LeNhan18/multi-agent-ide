@@ -1,9 +1,11 @@
 import { createServer } from 'node:http';
 import handler from './handler.mjs';
+import { createHandoffs } from './handoffs.mjs';
 
 const host = '127.0.0.1';
 const port = Number(process.env.WORKFLOW_LAB_PORT || 8080);
 const origin = 'http://' + host + ':' + port;
+const handoffs = createHandoffs(origin);
 
 createServer(async (incoming, outgoing) => {
   if (incoming.headers.host !== host + ':' + port || !incoming.url?.startsWith('/')) {
@@ -40,7 +42,10 @@ createServer(async (incoming, outgoing) => {
       }
       options.body = Buffer.concat(chunks);
     }
-    const response = await handler.fetch(new Request(url, options), process.env);
+    const request = new Request(url, options);
+    const response = url.pathname === '/api/local/handoffs'
+      ? await handoffs(request, url)
+      : await handler.fetch(request, process.env);
     outgoing.writeHead(response.status, Object.fromEntries(response.headers));
     outgoing.end(Buffer.from(await response.arrayBuffer()));
   } catch {
