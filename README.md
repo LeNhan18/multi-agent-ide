@@ -61,6 +61,14 @@ The short task form works without credentials. To enable AI planning, provide `O
 
 Add industry profiles in `frontend/public/workflow-lab/squads.js` and corresponding role policies in `policies.js`. The simulated workflow uses browser storage and does not call the main runtime or GitHub.
 
+### Handoff board for local agents
+
+Open **Bàn giao agent** in the local Workflow Lab and select a Git project. Enter one instruction, choose an agent, and assign a repository-relative file or directory. AI Office creates a detached worktree from the project's current commit and prevents overlapping assignments while a task is active, including during review. Commit the baseline to Git first if agents need to see changes from the primary worktree.
+
+Open **Mở hướng dẫn giao việc**, open the assigned worktree in the agent's own tool, and copy the instructions into that tool. Agents can read the shared board to see assignments, messages, and accepted handoffs. Each agent writes its result to its own handoff file. Click **Nhận bàn giao** to publish the note to the shared board after AI Office checks the committed, staged, unstaged and untracked Git changes against the assigned scope. Review and integrate the worktree manually, then click **Đóng và nhả phạm vi**.
+
+The local board and worktrees live in the OS user's application data. This feature does not launch third-party tools, manage their login, or merge changes. Git worktrees isolate normal edits, but are not an OS sandbox. Grant external tools access to their own worktree and the specific handoff paths shown in the instructions.
+
 ### Web IDE and API keys
 
 The **Soạn thảo** tab edits text files and saves them in the current browser. Use **Mở tệp** to import a local file and **Tải xuống** to export a copy.
