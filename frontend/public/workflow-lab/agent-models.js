@@ -45,6 +45,7 @@ async function render(){
   if(currentRequest===request)host.textContent='Chưa tải được model. Đóng rồi mở lại mục này để thử lại.';
   return;
  }
+ await window.officeAccounts?.ready;
  if(currentRequest!==request)return;
  window.officeApiKeys.registerModels(catalog.models, catalog.connections);
  const [modelField,model]=selectField('Model',Object.entries(catalog.models).map(([value,[provider,label]])=>[
@@ -52,9 +53,19 @@ async function render(){
  ]));
  const [connectionField,connection]=selectField('API key',[['shared','Dùng kết nối chung'],['dedicated','Dùng key riêng cho agent']]);
  const [reasoningField,reasoning]=selectField('Mức suy luận',[['auto','Tự động · prompt ngắn suy luận sâu'],['medium','Cân bằng'],['high','Suy luận sâu · có thể chậm hơn']]);
+ const accountOptions = window.officeAccounts?.choices() ?? [];
+ const [accountField,account]=selectField('Tài khoản AI', [
+  ['', 'Theo cấu hình chung'], ['api', 'Dùng kết nối API của agent'],
+  ...accountOptions.map(([row,label])=>[row.id,label+(row.connected?'':' · Cần kết nối lại')]),
+ ]);
+ accountField.hidden = !window.officeAccounts?.isAvailable();
  const hint=document.createElement('p');
  const status=document.createElement('p');status.setAttribute('role','status');
  const saved=get(agent);
+ if (saved.accountChoice && !Array.from(account.options).some(option=>option.value===saved.accountChoice)) {
+  account.add(new Option('Tài khoản cần kết nối lại',saved.accountChoice));
+ }
+ account.value=saved.accountChoice||(saved.connection==='dedicated'?'api':'');
  model.value=Object.hasOwn(catalog.models,saved.model)?saved.model:defaultConfig.model;
  connection.value=saved.connection;
  reasoning.value=['auto','medium','high'].includes(saved.reasoning)?saved.reasoning:'auto';
@@ -64,17 +75,20 @@ async function render(){
   serverReady:()=>catalog.connections[catalog.models[model.value]?.[0]]?.dedicatedReady,
  });
  function update(persist){
+  const useAccount = Boolean(window.officeAccounts?.selection(account.value || (connection.value==='dedicated'?'api':'')).accountId);
+  modelField.hidden = connectionField.hidden = useAccount;
+  hint.hidden = useAccount;
   hint.textContent=connection.value==='shared'?'Dán key chung trong Cài đặt.':'★ Model gợi ý theo vai trò.';
-  keyBox.hidden=connection.value!=='dedicated';
+  keyBox.hidden=useAccount || connection.value!=='dedicated';
   if(persist){
-   preferences[id(agent)]={model:model.value,connection:connection.value,reasoning:reasoning.value};
+   preferences[id(agent)]={model:model.value,connection:connection.value,reasoning:reasoning.value,accountChoice:account.value};
    try{localStorage.setItem(key,JSON.stringify(preferences));status.textContent='Đã lưu cấu hình trên trình duyệt.';}
    catch{status.textContent='Đã áp dụng cho phiên này.';}
   }
  }
  model.onchange=connection.onchange=()=>{update(true);refreshKey();};
- reasoning.onchange=()=>update(true);
- host.replaceChildren(modelField,connectionField,reasoningField,hint,keyBox,status);
+ reasoning.onchange=account.onchange=()=>update(true);
+ host.replaceChildren(accountField,modelField,connectionField,reasoningField,hint,keyBox,status);
  update(false);
 }
 const panel=document.getElementById('agent-model-panel');

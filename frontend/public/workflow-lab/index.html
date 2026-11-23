@@ -359,9 +359,15 @@ form label{display:grid;gap:5px;font-size:13px;font-weight:650}
 </section><details class="panel workflow-fold"><summary>Quy trình mô phỏng</summary><section id="workflow" aria-label="Workflow Lab"></section></details></section>
 <section data-pane="board" hidden><div class="grid stats" id="stats"></div><nav class="nav" id="nav" aria-label="Chế độ xem"></nav><div class="line filters" id="filters"><select id="week" aria-label="Tuần"></select><select id="milestone" aria-label="Mốc"></select><label><input type="checkbox" id="missing"> Chỉ hiện việc thiếu bằng chứng</label><button id="clear">Bỏ lọc</button></div><p id="notice" role="status"></p><section id="view" class="section"></section><div class="line foot muted"><span>Cập nhật thủ công · Dữ liệu lưu trong trình duyệt này.</span><div class="actions"><button id="export">Xuất JSON</button><button id="import">Nhập JSON</button><input type="file" accept=".json,application/json" hidden id="file"></div></div></section>
 <section data-pane="settings" hidden>
-<h1>Kết nối AI</h1><p class="muted">Dán key một lần để dùng các trợ lý trong dự án.</p>
-<section class="panel" id="api-config"><div id="shared-api-key"></div>
-<details class="api-admin"><summary>Key phía server</summary><p>Có thể đặt <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> hoặc <code>GEMINI_API_KEY</code> trong môi trường server.</p></details></section>
+<h1>Kết nối AI</h1>
+<section class="panel" id="accounts" hidden>
+<h2>Tài khoản ChatGPT</h2>
+<p class="muted">Dùng gói ChatGPT đủ điều kiện. Chọn tài khoản riêng cho từng agent trong mục Model &amp; kết nối.</p>
+<div id="account-list"></div><p id="account-status" role="status"></p>
+<a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener noreferrer">Xem hạn mức ChatGPT</a>
+</section>
+<details class="panel" id="api-config"><summary>Kết nối bằng API key</summary><div id="shared-api-key"></div>
+<details class="api-admin"><summary>Key phía server</summary><p>Có thể đặt <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> hoặc <code>GEMINI_API_KEY</code> trong môi trường server.</p></details></details>
 </section>
 </main>
 </div>
@@ -499,7 +505,8 @@ planButton.onclick=async()=>{
  const prompt=promptField.value.trim();
  if(!prompt){planNote.textContent='Nhập một câu mô tả công việc.';promptField.focus();return;}
  const agent=window.officeActiveAgent;
- const settings=agent?{squad:agent.squad,role:agent.role,...window.officeModelSettings.get(agent)}:{};
+ const {accountChoice,...modelSettings}=agent?window.officeModelSettings.get(agent):{};
+ const settings=agent?{squad:agent.squad,role:agent.role,...modelSettings}:{};
  const request=new AbortController();planRequest=request;planButton.disabled=true;
  request.traceAgent=agent?{...agent}:{squad:'general',role:4};request.traceId=crypto.randomUUID();
  window.officeTerminal?.append(request.traceAgent,'prompt',prompt,request.traceId);
@@ -508,15 +515,16 @@ planButton.onclick=async()=>{
  plannerTimer=setTimeout(()=>{if(planRequest===request){resetPlanner();planNote.textContent='Quá 60 giây chờ. Bạn có thể thử lại hoặc lưu thủ công.';}},60000);
  planNote.textContent='AI đang lập kế hoạch theo kỹ năng và ràng buộc của agent…';
  try{
-  await window.officeModelSettings.catalogReady;
+  await Promise.all([window.officeModelSettings.catalogReady,window.officeAccounts?.ready]);
   if(planRequest!==request)return;
-  const response=await fetch('/api/ai/task-plan',{method:'POST',headers:{'Content-Type':'application/json',...window.officeApiKeys.headers(settings,agent)},body:JSON.stringify({prompt,...settings}),signal:request.signal,redirect:'error'});
+  const account=window.officeAccounts?.selection(accountChoice || (settings.connection === 'dedicated' ? 'api' : ''))??{};
+  const response=await fetch('/api/ai/task-plan',{method:'POST',headers:{'Content-Type':'application/json',...(!account.accountId&&window.officeApiKeys.headers(settings,agent))},body:JSON.stringify({prompt,...settings,...account}),signal:request.signal,redirect:'error'});
   const result=await response.json();
   if(planRequest!==request)return;
   if(!response.ok){
    request.traceFinished=true;
    window.officeTerminal?.append(request.traceAgent,'log','Lỗi HTTP '+response.status+' · '+String(result.status??'unavailable'),request.traceId);
-   planNote.textContent=result.status==='missing'?'Chưa có API key. Mở Cài đặt hoặc Model & kết nối của agent.':result.status==='rejected'?'Nhà cung cấp từ chối key hoặc model đã chọn.':result.status==='limited'?'Nhà cung cấp đang giới hạn yêu cầu. Thử lại sau.':result.status==='model_unavailable'?'Model hoặc cấu hình chưa được API hỗ trợ. Chọn model khác trong Model & kết nối.':result.status==='timeout'?'Nhà cung cấp phản hồi quá lâu. Thử lại hoặc lưu thủ công.':'AI chưa tạo được đề xuất. Thử lại hoặc lưu câu mô tả.';
+   planNote.textContent=result.status==='account_missing'?'Tài khoản ChatGPT cần kết nối lại trong Kết nối AI.':result.status==='missing'?'Chưa có API key. Mở Cài đặt hoặc Model & kết nối của agent.':result.status==='rejected'?'Nhà cung cấp từ chối key hoặc model đã chọn.':result.status==='limited'?'Nhà cung cấp đang giới hạn yêu cầu. Thử lại sau.':result.status==='model_unavailable'?'Model hoặc cấu hình chưa được API hỗ trợ. Chọn model khác trong Model & kết nối.':result.status==='timeout'?'Nhà cung cấp phản hồi quá lâu. Thử lại hoặc lưu thủ công.':'AI chưa tạo được đề xuất. Thử lại hoặc lưu câu mô tả.';
    return;
   }
   request.traceFinished=true;
@@ -565,4 +573,4 @@ $('file').onchange=async()=>{
  catch{$('notice').textContent='Tệp JSON không hợp lệ. Hãy chọn bản xuất từ AI Office.';}
 };
 render();
-</script><script src="./squads.js" defer></script><script src="./policies.js" defer></script><script src="./workflow.js?v=4" defer></script><script src="./office.js?v=9" defer></script><script src="./agent-terminal.js" defer></script><script src="./api-settings.js?v=3" defer></script><script src="./agent-models.js?v=2" defer></script><script src="./mcp-settings.js" defer></script><script src="./ide.js?v=4" defer></script></html>
+</script><script src="./squads.js" defer></script><script src="./policies.js" defer></script><script src="./workflow.js?v=4" defer></script><script src="./office.js?v=9" defer></script><script src="./agent-terminal.js" defer></script><script src="./api-settings.js?v=3" defer></script><script src="./agent-models.js?v=3" defer></script><script src="./mcp-settings.js" defer></script><script src="./ide.js?v=5" defer></script><script src="./chatgpt-accounts.js" defer></script></html>
